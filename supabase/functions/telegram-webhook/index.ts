@@ -122,7 +122,10 @@ veya
   });
 
   const data = await res.json();
-  const text = data.content[0].text;
+  if (data.error) throw new Error(`Claude API: ${data.error.message}`);
+  let text = data.content[0].text.trim();
+  // Claude bazen ```json ... ``` ile sarar, temizle
+  text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/,  "");
   return JSON.parse(text);
 }
 
@@ -190,11 +193,12 @@ Deno.serve(async (req) => {
             text: "✓ kaydedildi",
           });
         }
-      } catch {
+      } catch (classifyErr) {
+        console.error("Classification error:", classifyErr);
         await createNote(update.message.text, "telegram");
         await sendTelegram("sendMessage", {
           chat_id: chatId,
-          text: "✓ kaydedildi (sınıflandırma yapılamadı)",
+          text: `✓ kaydedildi (hata: ${classifyErr instanceof Error ? classifyErr.message : String(classifyErr)})`,
         });
       }
     }
@@ -269,6 +273,53 @@ Deno.serve(async (req) => {
           text: "Ses işlenemedi, tekrar dene",
         });
       }
+    }
+
+    if (update.callback_query) {
+      const data = update.callback_query.data as string;
+      const messageId = update.callback_query.message.message_id;
+      const [action, noteId] = data.split(":");
+
+      if (action === "confirm") {
+        // Notu done yap
+        await supabase
+          .from("notes")
+          .update({ type: "done", updated_at: new Date().toISOString() })
+          .eq("id", noteId);
+
+        const { data: note } = await supabase
+          .from("notes")
+          .select("content")
+          .eq("id", noteId)
+          .single();
+
+        // Mesajı güncelle (butonları kaldır)
+        await sendTelegram("editMessageText", {
+          chat_id: chatId,
+          message_id: messageId,
+          text: `✓ "${note?.content}" tamamlandı`,
+        });
+      } else if (action === "reject") {
+        // Orijinal mesajı inbox'a kaydet
+        const replyMessage = update.callback_query.message.reply_to_message;
+        const originalText = replyMessage?.text ?? replyMessage?.caption ?? "";
+
+        if (originalText) {
+          await createNote(originalText, replyMessage?.voice ? "voice" : "telegram");
+        }
+
+        // Mesajı güncelle
+        await sendTelegram("editMessageText", {
+          chat_id: chatId,
+          message_id: messageId,
+          text: "✓ yeni not olarak kaydedildi",
+        });
+      }
+
+      // Telegram loading göstergesini kapat
+      await sendTelegram("answerCallbackQuery", {
+        callback_query_id: update.callback_query.id,
+      });
     }
   } catch (err) {
     console.error("Error:", err);
