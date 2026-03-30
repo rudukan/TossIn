@@ -64,10 +64,11 @@ async function transcribeVoice(fileId: string): Promise<string> {
 }
 
 interface ClassifyResult {
-  action: "complete" | "create";
+  action: "complete" | "create" | "create_multiple";
   matched_note_id?: string;
   confidence?: number;
   content?: string;
+  items?: string[];
 }
 
 async function classifyMessage(
@@ -112,12 +113,15 @@ Görev:
 1. Bu mesaj mevcut bir notu tamamlıyor mu, yoksa yeni bir not mu?
 2. Tamamlama sinyalleri: "ödendi", "bitti", "yaptım", "hallettim", "tamamlandı", "gönderdim", "aldım", "done", "paid", "finished", "completed", "sent"
 3. ÖNEMLİ: Tek kelimelik veya çok kısa belirsiz mesajlar (ör. "anne", "market") yeni not olarak kaydedilmeli, tamamlama olmamalı. Tamamlama için mesajda açık bir eylem ifadesi olmalı (ör. "anneyi aradım", "markete gittim").
-4. Sadece bir notu tamamla. Birden fazla not eşleşiyorsa en yakın olanı seç.${voiceHint}
+4. Sadece bir notu tamamla. Birden fazla not eşleşiyorsa en yakın olanı seç.
+5. Mesajda birden fazla ayrı görev/not varsa (liste, virgülle ayrılmış, numaralı maddeler) bunları ayrı ayrı notlara böl. Maksimum 7 not.${voiceHint}
 
 JSON döndür (başka bir şey yazma):
 { "action": "complete", "matched_note_id": "uuid", "confidence": 0.95 }
 veya
-{ "action": "create", "content": "temizlenmiş not metni" }`,
+{ "action": "create", "content": "temizlenmiş not metni" }
+veya
+{ "action": "create_multiple", "items": ["not 1", "not 2", "not 3"] }`,
         },
       ],
     }),
@@ -188,6 +192,16 @@ Deno.serve(async (req) => {
               ],
             },
           });
+        } else if (result.action === "create_multiple" && result.items && result.items.length > 0) {
+          const items = result.items.slice(0, 7);
+          for (const item of items) {
+            await createNote(item, "telegram");
+          }
+          const list = items.map((item: string) => `• ${item}`).join("\n");
+          await sendTelegram("sendMessage", {
+            chat_id: chatId,
+            text: `✓ ${items.length} not kaydedildi:\n${list}`,
+          });
         } else {
           await createNote(result.content ?? update.message.text, "telegram");
           await sendTelegram("sendMessage", {
@@ -254,6 +268,16 @@ Deno.serve(async (req) => {
                   ],
                 ],
               },
+            });
+          } else if (result.action === "create_multiple" && result.items && result.items.length > 0) {
+            const items = result.items.slice(0, 7);
+            for (const item of items) {
+              await createNote(item, "voice");
+            }
+            const list = items.map((item: string) => `• ${item}`).join("\n");
+            await sendTelegram("sendMessage", {
+              chat_id: chatId,
+              text: `🎤 ${items.length} not kaydedildi:\n${list}`,
             });
           } else {
             await createNote(result.content ?? transcript, "voice");
