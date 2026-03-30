@@ -110,7 +110,9 @@ Gelen mesaj: "${message}"
 
 Görev:
 1. Bu mesaj mevcut bir notu tamamlıyor mu, yoksa yeni bir not mu?
-2. Tamamlama sinyalleri: "ödendi", "bitti", "yaptım", "hallettim", "tamamlandı", "gönderdim", "aldım", "done", "paid", "finished", "completed", "sent"${voiceHint}
+2. Tamamlama sinyalleri: "ödendi", "bitti", "yaptım", "hallettim", "tamamlandı", "gönderdim", "aldım", "done", "paid", "finished", "completed", "sent"
+3. ÖNEMLİ: Tek kelimelik veya çok kısa belirsiz mesajlar (ör. "anne", "market") yeni not olarak kaydedilmeli, tamamlama olmamalı. Tamamlama için mesajda açık bir eylem ifadesi olmalı (ör. "anneyi aradım", "markete gittim").
+4. Sadece bir notu tamamla. Birden fazla not eşleşiyorsa en yakın olanı seç.${voiceHint}
 
 JSON döndür (başka bir şey yazma):
 { "action": "complete", "matched_note_id": "uuid", "confidence": 0.95 }
@@ -150,7 +152,7 @@ Deno.serve(async (req) => {
       try {
         const result = await classifyMessage(update.message.text, false);
 
-        if (result.action === "complete" && result.confidence !== undefined && result.confidence >= 0.8) {
+        if (result.action === "complete" && result.confidence !== undefined && result.confidence >= 0.9) {
           await supabase
             .from("notes")
             .update({ type: "done", updated_at: new Date().toISOString() })
@@ -217,7 +219,7 @@ Deno.serve(async (req) => {
         try {
           const result = await classifyMessage(transcript, true);
 
-          if (result.action === "complete" && result.confidence !== undefined && result.confidence >= 0.8) {
+          if (result.action === "complete" && result.confidence !== undefined && result.confidence >= 0.9) {
             await supabase
               .from("notes")
               .update({ type: "done", updated_at: new Date().toISOString() })
