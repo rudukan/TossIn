@@ -64,7 +64,7 @@ export function useNotes(typeFilter?: NoteType | NoteType[]) {
     return { data, error }
   }
 
-  const updateNote = async (id: string, updates: Partial<Pick<Note, 'content' | 'type' | 'tags' | 'is_starred'>>) => {
+  const updateNote = async (id: string, updates: Partial<Pick<Note, 'content' | 'type' | 'tags' | 'is_starred' | 'due_date'>>) => {
     // Optimistic update
     setNotes((prev) =>
       prev.map((n) => (n.id === id ? { ...n, ...updates, updated_at: new Date().toISOString() } : n))

@@ -6,15 +6,15 @@ import TagPill from './TagPill'
 
 const typeLabels: Record<NoteType, string> = {
   inbox: 'Inbox',
-  actionable: 'Yapilacak',
-  reference: 'Referans',
+  in_progress: 'Yapılıyor',
+  waiting: 'Beklemede',
   done: 'Bitti',
 }
 
 const typeColors: Record<NoteType, string> = {
   inbox: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  actionable: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
-  reference: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
+  in_progress: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
+  waiting: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
   done: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
 }
 
@@ -52,6 +52,18 @@ export default function NoteCard({
         <p className="flex-1 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
           {note.content}
         </p>
+        {note.due_date && (
+          <p className={`mt-1 text-[10px] font-medium ${
+            new Date(note.due_date) < new Date() ? 'text-red-400' :
+            new Date(note.due_date).toDateString() === new Date().toDateString() ? 'text-yellow-400' :
+            'text-zinc-500'
+          }`}>
+            {new Date(note.due_date) < new Date() ? '⚠️' :
+             new Date(note.due_date).toDateString() === new Date().toDateString() ? '🔴' : '⏰'}{' '}
+            {new Date(note.due_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}{' '}
+            {new Date(note.due_date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        )}
         <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={onToggleStar}
@@ -98,7 +110,7 @@ export default function NoteCard({
           {/* Type changer */}
           {showTypeChanger && (
             <div className="flex flex-wrap gap-1.5">
-              {(['inbox', 'actionable', 'reference', 'done'] as NoteType[]).map((t) => (
+              {(['inbox', 'in_progress', 'waiting', 'done'] as NoteType[]).map((t) => (
                 <button
                   key={t}
                   onClick={() => onUpdateType?.(t)}

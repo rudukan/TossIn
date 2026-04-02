@@ -21,8 +21,8 @@ import type { Note, NoteType } from '@/lib/types'
 
 const columns: { id: NoteType; label: string; color: string }[] = [
   { id: 'inbox', label: 'Inbox', color: 'text-blue-400' },
-  { id: 'actionable', label: 'Yapilacak', color: 'text-orange-400' },
-  { id: 'reference', label: 'Referans', color: 'text-purple-400' },
+  { id: 'in_progress', label: 'Yapılıyor', color: 'text-orange-400' },
+  { id: 'waiting', label: 'Beklemede', color: 'text-purple-400' },
   { id: 'done', label: 'Bitti', color: 'text-green-400' },
 ]
 
@@ -52,6 +52,18 @@ function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) 
       {...listeners}
     >
       <p className="text-sm leading-relaxed text-zinc-200">{note.content}</p>
+      {note.due_date && (
+        <p className={`mt-1 text-[10px] font-medium ${
+          new Date(note.due_date) < new Date() ? 'text-red-400' :
+          new Date(note.due_date).toDateString() === new Date().toDateString() ? 'text-yellow-400' :
+          'text-zinc-500'
+        }`}>
+          {new Date(note.due_date) < new Date() ? '⚠️' :
+           new Date(note.due_date).toDateString() === new Date().toDateString() ? '🔴' : '⏰'}{' '}
+          {new Date(note.due_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}{' '}
+          {new Date(note.due_date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+        </p>
+      )}
       <div className="mt-2 flex items-center justify-between">
         <span className="text-[10px] text-zinc-500">
           {new Date(note.created_at).toLocaleDateString('tr-TR', {
