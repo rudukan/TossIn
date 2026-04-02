@@ -20,15 +20,17 @@ async function sendTelegram(method: string, body: Record<string, unknown>) {
   return res.json();
 }
 
-async function createNote(content: string, source: "telegram" | "voice") {
-  const { error } = await supabase.from("notes").insert({
+async function createNote(content: string, source: "telegram" | "voice", dueDate?: string | null) {
+  const { data, error } = await supabase.from("notes").insert({
     content,
     type: "inbox",
     source,
     tags: [],
     is_starred: false,
-  });
+    due_date: dueDate ?? null,
+  }).select().single();
   if (error) throw error;
+  return data;
 }
 
 async function transcribeVoice(fileId: string): Promise<string> {
@@ -64,11 +66,15 @@ async function transcribeVoice(fileId: string): Promise<string> {
 }
 
 interface ClassifyResult {
-  action: "complete" | "create" | "create_multiple";
+  action: "complete" | "create" | "create_multiple" | "move" | "query";
   matched_note_id?: string;
   confidence?: number;
   content?: string;
   items?: string[];
+  target_type?: "in_progress" | "waiting";
+  query_type?: "today" | "waiting" | "in_progress" | "all_open";
+  due_date?: string | null;
+  needs_time?: boolean;
 }
 
 async function classifyMessage(
@@ -77,12 +83,15 @@ async function classifyMessage(
 ): Promise<ClassifyResult> {
   const { data: notes } = await supabase
     .from("notes")
-    .select("id, content")
-    .in("type", ["inbox", "actionable"]);
+    .select("id, content, type, due_date")
+    .in("type", ["inbox", "in_progress", "waiting"]);
 
   const notesList =
     notes && notes.length > 0
-      ? notes.map((n: { id: string; content: string }) => `- [${n.id}] ${n.content}`).join("\n")
+      ? notes.map((n: { id: string; content: string; type: string; due_date: string | null }) => {
+          const due = n.due_date ? ` (${n.due_date})` : "";
+          return `- [${n.id}] (${n.type}) ${n.content}${due}`;
+        }).join("\n")
       : "(not yok)";
 
   const voiceHint = isVoice
@@ -103,6 +112,7 @@ async function classifyMessage(
         {
           role: "user",
           content: `Sen bir not asistanısın. Kullanıcının mesajını analiz et.
+Bugünün tarihi: ${new Date().toISOString().split("T")[0]}
 
 Kullanıcının açık notları:
 ${notesList}
@@ -110,18 +120,27 @@ ${notesList}
 Gelen mesaj: "${message}"
 
 Görev:
-1. Bu mesaj mevcut bir notu tamamlıyor mu, yoksa yeni bir not mu?
+1. Bu mesaj mevcut bir notu tamamlıyor mu, yoksa yeni bir not mu, yoksa bir board geçişi mi, yoksa bir sorgulama mı?
 2. Tamamlama sinyalleri: "ödendi", "bitti", "yaptım", "hallettim", "tamamlandı", "gönderdim", "aldım", "done", "paid", "finished", "completed", "sent"
-3. ÖNEMLİ: Tek kelimelik veya çok kısa belirsiz mesajlar (ör. "anne", "market") yeni not olarak kaydedilmeli, tamamlama olmamalı. Tamamlama için mesajda açık bir eylem ifadesi olmalı (ör. "anneyi aradım", "markete gittim").
-4. Sadece bir notu tamamla. Birden fazla not eşleşiyorsa en yakın olanı seç.
-5. Mesajda birden fazla ayrı görev/not varsa (liste, virgülle ayrılmış, numaralı maddeler) bunları ayrı ayrı notlara böl. Maksimum 7 not.${voiceHint}
+3. Board geçiş sinyalleri: "başlıyorum", "üzerinde çalışıyorum" → in_progress. "erteledim", "beklemede", "bekliyorum" → waiting
+4. Sorgulama sinyalleri: "bugün ne var?", "ne yapmam lazım?", "beklemedekiler?" → query
+5. ÖNEMLİ: Tek kelimelik veya çok kısa belirsiz mesajlar yeni not olarak kaydedilmeli. Tamamlama/geçiş için açık eylem ifadesi gerekli.
+6. Sadece bir notu tamamla veya taşı. Birden fazla eşleşiyorsa en yakın olanı seç.
+7. Mesajda birden fazla ayrı görev varsa bunları ayrı ayrı notlara böl. Maksimum 7 not.
+8. Mesajda tarih/saat bilgisi varsa due_date olarak çıkar (ISO 8601). "yarın" = bir sonraki gün, "cuma" = en yakın cuma. Saat belirtilmemişse needs_time: true.${voiceHint}
 
 JSON döndür (başka bir şey yazma):
 { "action": "complete", "matched_note_id": "uuid", "confidence": 0.95 }
 veya
-{ "action": "create", "content": "temizlenmiş not metni" }
+{ "action": "create", "content": "temizlenmiş not", "due_date": "2026-04-03T15:00:00" }
 veya
-{ "action": "create_multiple", "items": ["not 1", "not 2", "not 3"] }`,
+{ "action": "create", "content": "temizlenmiş not", "due_date": "2026-04-04", "needs_time": true }
+veya
+{ "action": "create_multiple", "items": ["not 1", "not 2"] }
+veya
+{ "action": "move", "matched_note_id": "uuid", "target_type": "in_progress", "confidence": 0.95 }
+veya
+{ "action": "query", "query_type": "today" }`,
         },
       ],
     }),
@@ -192,6 +211,87 @@ Deno.serve(async (req) => {
               ],
             },
           });
+        } else if (result.action === "move" && result.confidence !== undefined && result.confidence >= 0.9) {
+          await supabase
+            .from("notes")
+            .update({ type: result.target_type, updated_at: new Date().toISOString() })
+            .eq("id", result.matched_note_id);
+
+          const { data: note } = await supabase
+            .from("notes")
+            .select("content")
+            .eq("id", result.matched_note_id)
+            .single();
+
+          const emoji = result.target_type === "in_progress" ? "📋" : "⏸";
+          const label = result.target_type === "in_progress" ? "Yapılıyor" : "Beklemede";
+          await sendTelegram("sendMessage", {
+            chat_id: chatId,
+            text: `${emoji} "${note?.content}" → ${label}`,
+          });
+        } else if (result.action === "move") {
+          const { data: note } = await supabase
+            .from("notes")
+            .select("content")
+            .eq("id", result.matched_note_id)
+            .single();
+
+          const label = result.target_type === "in_progress" ? "Yapılıyor" : "Beklemede";
+          await sendTelegram("sendMessage", {
+            chat_id: chatId,
+            text: `"${note?.content}" → ${label}'a taşınsın mı?`,
+            reply_to_message_id: update.message.message_id,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "Evet ✓", callback_data: `move_confirm:${result.matched_note_id}:${result.target_type}` },
+                  { text: "Hayır", callback_data: `move_reject:${result.matched_note_id}` },
+                ],
+              ],
+            },
+          });
+        } else if (result.action === "query") {
+          let queryFilter: string[];
+          let title: string;
+
+          if (result.query_type === "today") {
+            queryFilter = ["inbox", "in_progress"];
+            title = "📋 Bugünkü notların:";
+          } else if (result.query_type === "waiting") {
+            queryFilter = ["waiting"];
+            title = "⏸ Beklemede:";
+          } else if (result.query_type === "in_progress") {
+            queryFilter = ["in_progress"];
+            title = "📋 Yapılıyor:";
+          } else {
+            queryFilter = ["inbox", "in_progress", "waiting"];
+            title = "📋 Açık notların:";
+          }
+
+          const { data: queryNotes } = await supabase
+            .from("notes")
+            .select("content, due_date, type")
+            .in("type", queryFilter)
+            .order("due_date", { ascending: true, nullsFirst: false })
+            .order("created_at", { ascending: false });
+
+          if (!queryNotes || queryNotes.length === 0) {
+            await sendTelegram("sendMessage", {
+              chat_id: chatId,
+              text: `${title}\n\nHiç not yok 🎉`,
+            });
+          } else {
+            const lines = queryNotes.map((n: { content: string; due_date: string | null }) => {
+              const due = n.due_date
+                ? `⏰ ${new Date(n.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} — `
+                : "• ";
+              return `  ${due}${n.content}`;
+            });
+            await sendTelegram("sendMessage", {
+              chat_id: chatId,
+              text: `${title}\n${lines.join("\n")}`,
+            });
+          }
         } else if (result.action === "create_multiple" && result.items && result.items.length > 0) {
           const items = result.items.slice(0, 7);
           for (const item of items) {
@@ -203,11 +303,37 @@ Deno.serve(async (req) => {
             text: `✓ ${items.length} not kaydedildi:\n${list}`,
           });
         } else {
-          await createNote(result.content ?? update.message.text, "telegram");
-          await sendTelegram("sendMessage", {
-            chat_id: chatId,
-            text: "✓ kaydedildi",
-          });
+          const note = await createNote(result.content ?? update.message.text, "telegram", result.due_date);
+
+          if (result.needs_time && result.due_date) {
+            const dateStr = new Date(result.due_date).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+            await sendTelegram("sendMessage", {
+              chat_id: chatId,
+              text: `✓ kaydedildi (📅 ${dateStr})\nSaat kaçta hatırlatayım?`,
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: "09:00", callback_data: `settime:${note.id}:09:00` },
+                    { text: "12:00", callback_data: `settime:${note.id}:12:00` },
+                    { text: "15:00", callback_data: `settime:${note.id}:15:00` },
+                    { text: "Hatırlatma istemiyorum", callback_data: `noreminder:${note.id}` },
+                  ],
+                ],
+              },
+            });
+          } else if (result.due_date) {
+            const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+            const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+            await sendTelegram("sendMessage", {
+              chat_id: chatId,
+              text: `✓ kaydedildi (⏰ ${dayStr} ${dateStr})`,
+            });
+          } else {
+            await sendTelegram("sendMessage", {
+              chat_id: chatId,
+              text: "✓ kaydedildi",
+            });
+          }
         }
       } catch (classifyErr) {
         console.error("Classification error:", classifyErr);
@@ -269,6 +395,87 @@ Deno.serve(async (req) => {
                 ],
               },
             });
+          } else if (result.action === "move" && result.confidence !== undefined && result.confidence >= 0.9) {
+            await supabase
+              .from("notes")
+              .update({ type: result.target_type, updated_at: new Date().toISOString() })
+              .eq("id", result.matched_note_id);
+
+            const { data: note } = await supabase
+              .from("notes")
+              .select("content")
+              .eq("id", result.matched_note_id)
+              .single();
+
+            const emoji = result.target_type === "in_progress" ? "📋" : "⏸";
+            const label = result.target_type === "in_progress" ? "Yapılıyor" : "Beklemede";
+            await sendTelegram("sendMessage", {
+              chat_id: chatId,
+              text: `🎤 ${emoji} "${note?.content}" → ${label}`,
+            });
+          } else if (result.action === "move") {
+            const { data: note } = await supabase
+              .from("notes")
+              .select("content")
+              .eq("id", result.matched_note_id)
+              .single();
+
+            const label = result.target_type === "in_progress" ? "Yapılıyor" : "Beklemede";
+            await sendTelegram("sendMessage", {
+              chat_id: chatId,
+              text: `🎤 "${note?.content}" → ${label}'a taşınsın mı?`,
+              reply_to_message_id: update.message.message_id,
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: "Evet ✓", callback_data: `move_confirm:${result.matched_note_id}:${result.target_type}` },
+                    { text: "Hayır", callback_data: `move_reject:${result.matched_note_id}` },
+                  ],
+                ],
+              },
+            });
+          } else if (result.action === "query") {
+            let queryFilter: string[];
+            let title: string;
+
+            if (result.query_type === "today") {
+              queryFilter = ["inbox", "in_progress"];
+              title = "📋 Bugünkü notların:";
+            } else if (result.query_type === "waiting") {
+              queryFilter = ["waiting"];
+              title = "⏸ Beklemede:";
+            } else if (result.query_type === "in_progress") {
+              queryFilter = ["in_progress"];
+              title = "📋 Yapılıyor:";
+            } else {
+              queryFilter = ["inbox", "in_progress", "waiting"];
+              title = "📋 Açık notların:";
+            }
+
+            const { data: queryNotes } = await supabase
+              .from("notes")
+              .select("content, due_date, type")
+              .in("type", queryFilter)
+              .order("due_date", { ascending: true, nullsFirst: false })
+              .order("created_at", { ascending: false });
+
+            if (!queryNotes || queryNotes.length === 0) {
+              await sendTelegram("sendMessage", {
+                chat_id: chatId,
+                text: `${title}\n\nHiç not yok 🎉`,
+              });
+            } else {
+              const lines = queryNotes.map((n: { content: string; due_date: string | null }) => {
+                const due = n.due_date
+                  ? `⏰ ${new Date(n.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} — `
+                  : "• ";
+                return `  ${due}${n.content}`;
+              });
+              await sendTelegram("sendMessage", {
+                chat_id: chatId,
+                text: `${title}\n${lines.join("\n")}`,
+              });
+            }
           } else if (result.action === "create_multiple" && result.items && result.items.length > 0) {
             const items = result.items.slice(0, 7);
             for (const item of items) {
@@ -280,11 +487,37 @@ Deno.serve(async (req) => {
               text: `🎤 ${items.length} not kaydedildi:\n${list}`,
             });
           } else {
-            await createNote(result.content ?? transcript, "voice");
-            await sendTelegram("sendMessage", {
-              chat_id: chatId,
-              text: `🎤 "${result.content ?? transcript}" — kaydedildi`,
-            });
+            const note = await createNote(result.content ?? transcript, "voice", result.due_date);
+
+            if (result.needs_time && result.due_date) {
+              const dateStr = new Date(result.due_date).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+              await sendTelegram("sendMessage", {
+                chat_id: chatId,
+                text: `🎤 ✓ kaydedildi (📅 ${dateStr})\nSaat kaçta hatırlatayım?`,
+                reply_markup: {
+                  inline_keyboard: [
+                    [
+                      { text: "09:00", callback_data: `settime:${note.id}:09:00` },
+                      { text: "12:00", callback_data: `settime:${note.id}:12:00` },
+                      { text: "15:00", callback_data: `settime:${note.id}:15:00` },
+                      { text: "Hatırlatma istemiyorum", callback_data: `noreminder:${note.id}` },
+                    ],
+                  ],
+                },
+              });
+            } else if (result.due_date) {
+              const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+              const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+              await sendTelegram("sendMessage", {
+                chat_id: chatId,
+                text: `🎤 ✓ kaydedildi (⏰ ${dayStr} ${dateStr})`,
+              });
+            } else {
+              await sendTelegram("sendMessage", {
+                chat_id: chatId,
+                text: `🎤 "${result.content ?? transcript}" — kaydedildi`,
+              });
+            }
           }
         } catch {
           await createNote(transcript, "voice");
@@ -340,6 +573,121 @@ Deno.serve(async (req) => {
           message_id: messageId,
           text: "✓ yeni not olarak kaydedildi",
         });
+
+      } else if (action === "move_confirm") {
+        const parts = data.split(":");
+        const noteId2 = parts[1];
+        const targetType = parts[2];
+        await supabase
+          .from("notes")
+          .update({ type: targetType, updated_at: new Date().toISOString() })
+          .eq("id", noteId2);
+
+        const { data: note } = await supabase
+          .from("notes")
+          .select("content")
+          .eq("id", noteId2)
+          .single();
+
+        const emoji = targetType === "in_progress" ? "📋" : "⏸";
+        const label = targetType === "in_progress" ? "Yapılıyor" : "Beklemede";
+        await sendTelegram("editMessageText", {
+          chat_id: chatId,
+          message_id: messageId,
+          text: `${emoji} "${note?.content}" → ${label}`,
+        });
+
+      } else if (action === "move_reject") {
+        await sendTelegram("editMessageText", {
+          chat_id: chatId,
+          message_id: messageId,
+          text: "İptal edildi",
+        });
+
+      } else if (action === "settime") {
+        const parts = data.split(":");
+        const noteId2 = parts[1];
+        const hours = parts[2];
+        const minutes = parts[3];
+
+        const { data: note } = await supabase
+          .from("notes")
+          .select("due_date")
+          .eq("id", noteId2)
+          .single();
+
+        if (note?.due_date) {
+          const newDate = new Date(note.due_date);
+          newDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+          await supabase
+            .from("notes")
+            .update({ due_date: newDate.toISOString(), updated_at: new Date().toISOString() })
+            .eq("id", noteId2);
+
+          await sendTelegram("editMessageText", {
+            chat_id: chatId,
+            message_id: messageId,
+            text: `⏰ Hatırlatma ${hours}:${minutes}'e ayarlandı`,
+          });
+        }
+
+      } else if (action === "noreminder") {
+        await supabase
+          .from("notes")
+          .update({ reminded: true, updated_at: new Date().toISOString() })
+          .eq("id", noteId);
+
+        await sendTelegram("editMessageText", {
+          chat_id: chatId,
+          message_id: messageId,
+          text: "✓ Hatırlatma iptal edildi",
+        });
+
+      } else if (action === "reminder_done") {
+        await supabase
+          .from("notes")
+          .update({ type: "done", updated_at: new Date().toISOString() })
+          .eq("id", noteId);
+
+        const { data: note } = await supabase
+          .from("notes")
+          .select("content")
+          .eq("id", noteId)
+          .single();
+
+        await sendTelegram("editMessageText", {
+          chat_id: chatId,
+          message_id: messageId,
+          text: `✓ "${note?.content}" tamamlandı`,
+        });
+
+      } else if (action === "reminder_snooze") {
+        const { data: note } = await supabase
+          .from("notes")
+          .select("due_date")
+          .eq("id", noteId)
+          .single();
+
+        if (note?.due_date) {
+          const newDate = new Date(note.due_date);
+          newDate.setHours(newDate.getHours() + 1);
+          await supabase
+            .from("notes")
+            .update({
+              due_date: newDate.toISOString(),
+              reminded: false,
+              reminded_at: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", noteId);
+
+          const timeStr = newDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+          await sendTelegram("editMessageText", {
+            chat_id: chatId,
+            message_id: messageId,
+            text: `⏰ ${timeStr}'e ertelendi`,
+          });
+        }
       }
 
       // Telegram loading göstergesini kapat
