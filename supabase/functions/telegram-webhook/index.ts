@@ -112,7 +112,8 @@ async function classifyMessage(
         {
           role: "user",
           content: `Sen bir not asistanısın. Kullanıcının mesajını analiz et.
-Bugünün tarihi: ${new Date().toISOString().split("T")[0]}
+Bugünün tarihi ve saati: ${new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })}
+Timezone: Europe/Istanbul (UTC+3). Tüm due_date değerlerini +03:00 offset ile döndür (ör. "2026-04-03T15:00:00+03:00").
 
 Kullanıcının açık notları:
 ${notesList}
@@ -255,8 +256,49 @@ Deno.serve(async (req) => {
           let title: string;
 
           if (result.query_type === "today") {
-            queryFilter = ["inbox", "in_progress"];
-            title = "📋 Bugünkü notların:";
+            // Bugün: due_date bugün olan + due_date'siz in_progress notlar
+            // Istanbul timezone ile bugünün başı ve sonu
+            const now = new Date();
+            const istanbulOffset = 3 * 60; // UTC+3
+            const localNow = new Date(now.getTime() + istanbulOffset * 60 * 1000);
+            const todayStr = localNow.toISOString().split("T")[0];
+            const todayStart = new Date(todayStr + "T00:00:00+03:00");
+            const todayEnd = new Date(todayStr + "T23:59:59+03:00");
+
+            const { data: todayDue } = await supabase
+              .from("notes")
+              .select("content, due_date, type")
+              .neq("type", "done")
+              .gte("due_date", todayStart.toISOString())
+              .lte("due_date", todayEnd.toISOString())
+              .order("due_date", { ascending: true });
+
+            const { data: inProgressNoDue } = await supabase
+              .from("notes")
+              .select("content, due_date, type")
+              .eq("type", "in_progress")
+              .is("due_date", null)
+              .order("created_at", { ascending: false });
+
+            const todayNotes = [...(todayDue ?? []), ...(inProgressNoDue ?? [])];
+
+            if (todayNotes.length === 0) {
+              await sendTelegram("sendMessage", {
+                chat_id: chatId,
+                text: "📋 Bugünkü notların:\n\nHiç not yok 🎉",
+              });
+            } else {
+              const lines = todayNotes.map((n: { content: string; due_date: string | null }) => {
+                const due = n.due_date
+                  ? `⏰ ${new Date(n.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })} — `
+                  : "• ";
+                return `  ${due}${n.content}`;
+              });
+              await sendTelegram("sendMessage", {
+                chat_id: chatId,
+                text: `📋 Bugünkü notların:\n${lines.join("\n")}`,
+              });
+            }
           } else if (result.query_type === "waiting") {
             queryFilter = ["waiting"];
             title = "⏸ Beklemede:";
@@ -268,29 +310,31 @@ Deno.serve(async (req) => {
             title = "📋 Açık notların:";
           }
 
-          const { data: queryNotes } = await supabase
-            .from("notes")
-            .select("content, due_date, type")
-            .in("type", queryFilter)
-            .order("due_date", { ascending: true, nullsFirst: false })
-            .order("created_at", { ascending: false });
+          if (result.query_type !== "today") {
+            const { data: queryNotes } = await supabase
+              .from("notes")
+              .select("content, due_date, type")
+              .in("type", queryFilter)
+              .order("due_date", { ascending: true, nullsFirst: false })
+              .order("created_at", { ascending: false });
 
-          if (!queryNotes || queryNotes.length === 0) {
-            await sendTelegram("sendMessage", {
-              chat_id: chatId,
-              text: `${title}\n\nHiç not yok 🎉`,
-            });
-          } else {
-            const lines = queryNotes.map((n: { content: string; due_date: string | null }) => {
-              const due = n.due_date
-                ? `⏰ ${new Date(n.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} — `
-                : "• ";
-              return `  ${due}${n.content}`;
-            });
-            await sendTelegram("sendMessage", {
-              chat_id: chatId,
-              text: `${title}\n${lines.join("\n")}`,
-            });
+            if (!queryNotes || queryNotes.length === 0) {
+              await sendTelegram("sendMessage", {
+                chat_id: chatId,
+                text: `${title}\n\nHiç not yok 🎉`,
+              });
+            } else {
+              const lines = queryNotes.map((n: { content: string; due_date: string | null }) => {
+                const due = n.due_date
+                  ? `⏰ ${new Date(n.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })} — `
+                  : "• ";
+                return `  ${due}${n.content}`;
+              });
+              await sendTelegram("sendMessage", {
+                chat_id: chatId,
+                text: `${title}\n${lines.join("\n")}`,
+              });
+            }
           }
         } else if (result.action === "create_multiple" && result.items && result.items.length > 0) {
           const items = result.items.slice(0, 7);
@@ -306,7 +350,7 @@ Deno.serve(async (req) => {
           const note = await createNote(result.content ?? update.message.text, "telegram", result.due_date);
 
           if (result.needs_time && result.due_date) {
-            const dateStr = new Date(result.due_date).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+            const dateStr = new Date(result.due_date).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Istanbul" });
             await sendTelegram("sendMessage", {
               chat_id: chatId,
               text: `✓ kaydedildi (📅 ${dateStr})\nSaat kaçta hatırlatayım?`,
@@ -322,8 +366,8 @@ Deno.serve(async (req) => {
               },
             });
           } else if (result.due_date) {
-            const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-            const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+            const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
+            const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short", timeZone: "Europe/Istanbul" });
             await sendTelegram("sendMessage", {
               chat_id: chatId,
               text: `✓ kaydedildi (⏰ ${dayStr} ${dateStr})`,
@@ -439,42 +483,83 @@ Deno.serve(async (req) => {
             let title: string;
 
             if (result.query_type === "today") {
-              queryFilter = ["inbox", "in_progress"];
-              title = "📋 Bugünkü notların:";
+              const now = new Date();
+              const istanbulOffset = 3 * 60;
+              const localNow = new Date(now.getTime() + istanbulOffset * 60 * 1000);
+              const todayStr = localNow.toISOString().split("T")[0];
+              const todayStart = new Date(todayStr + "T00:00:00+03:00");
+              const todayEnd = new Date(todayStr + "T23:59:59+03:00");
+
+              const { data: todayDue } = await supabase
+                .from("notes")
+                .select("content, due_date, type")
+                .neq("type", "done")
+                .gte("due_date", todayStart.toISOString())
+                .lte("due_date", todayEnd.toISOString())
+                .order("due_date", { ascending: true });
+
+              const { data: inProgressNoDue } = await supabase
+                .from("notes")
+                .select("content, due_date, type")
+                .eq("type", "in_progress")
+                .is("due_date", null)
+                .order("created_at", { ascending: false });
+
+              const todayNotes = [...(todayDue ?? []), ...(inProgressNoDue ?? [])];
+
+              if (todayNotes.length === 0) {
+                await sendTelegram("sendMessage", {
+                  chat_id: chatId,
+                  text: "🎤 📋 Bugünkü notların:\n\nHiç not yok 🎉",
+                });
+              } else {
+                const lines = todayNotes.map((n: { content: string; due_date: string | null }) => {
+                  const due = n.due_date
+                    ? `⏰ ${new Date(n.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })} — `
+                    : "• ";
+                  return `  ${due}${n.content}`;
+                });
+                await sendTelegram("sendMessage", {
+                  chat_id: chatId,
+                  text: `🎤 📋 Bugünkü notların:\n${lines.join("\n")}`,
+                });
+              }
             } else if (result.query_type === "waiting") {
               queryFilter = ["waiting"];
-              title = "⏸ Beklemede:";
+              title = "🎤 ⏸ Beklemede:";
             } else if (result.query_type === "in_progress") {
               queryFilter = ["in_progress"];
-              title = "📋 Yapılıyor:";
+              title = "🎤 📋 Yapılıyor:";
             } else {
               queryFilter = ["inbox", "in_progress", "waiting"];
-              title = "📋 Açık notların:";
+              title = "🎤 📋 Açık notların:";
             }
 
-            const { data: queryNotes } = await supabase
-              .from("notes")
-              .select("content, due_date, type")
-              .in("type", queryFilter)
-              .order("due_date", { ascending: true, nullsFirst: false })
-              .order("created_at", { ascending: false });
+            if (result.query_type !== "today") {
+              const { data: queryNotes } = await supabase
+                .from("notes")
+                .select("content, due_date, type")
+                .in("type", queryFilter)
+                .order("due_date", { ascending: true, nullsFirst: false })
+                .order("created_at", { ascending: false });
 
-            if (!queryNotes || queryNotes.length === 0) {
-              await sendTelegram("sendMessage", {
-                chat_id: chatId,
-                text: `${title}\n\nHiç not yok 🎉`,
-              });
-            } else {
-              const lines = queryNotes.map((n: { content: string; due_date: string | null }) => {
-                const due = n.due_date
-                  ? `⏰ ${new Date(n.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} — `
-                  : "• ";
-                return `  ${due}${n.content}`;
-              });
-              await sendTelegram("sendMessage", {
-                chat_id: chatId,
-                text: `${title}\n${lines.join("\n")}`,
-              });
+              if (!queryNotes || queryNotes.length === 0) {
+                await sendTelegram("sendMessage", {
+                  chat_id: chatId,
+                  text: `${title}\n\nHiç not yok 🎉`,
+                });
+              } else {
+                const lines = queryNotes.map((n: { content: string; due_date: string | null }) => {
+                  const due = n.due_date
+                    ? `⏰ ${new Date(n.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })} — `
+                    : "• ";
+                  return `  ${due}${n.content}`;
+                });
+                await sendTelegram("sendMessage", {
+                  chat_id: chatId,
+                  text: `${title}\n${lines.join("\n")}`,
+                });
+              }
             }
           } else if (result.action === "create_multiple" && result.items && result.items.length > 0) {
             const items = result.items.slice(0, 7);
@@ -490,7 +575,7 @@ Deno.serve(async (req) => {
             const note = await createNote(result.content ?? transcript, "voice", result.due_date);
 
             if (result.needs_time && result.due_date) {
-              const dateStr = new Date(result.due_date).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+              const dateStr = new Date(result.due_date).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Istanbul" });
               await sendTelegram("sendMessage", {
                 chat_id: chatId,
                 text: `🎤 ✓ kaydedildi (📅 ${dateStr})\nSaat kaçta hatırlatayım?`,
@@ -506,8 +591,8 @@ Deno.serve(async (req) => {
                 },
               });
             } else if (result.due_date) {
-              const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-              const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+              const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
+              const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short", timeZone: "Europe/Istanbul" });
               await sendTelegram("sendMessage", {
                 chat_id: chatId,
                 text: `🎤 ✓ kaydedildi (⏰ ${dayStr} ${dateStr})`,
@@ -681,7 +766,7 @@ Deno.serve(async (req) => {
             })
             .eq("id", noteId);
 
-          const timeStr = newDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+          const timeStr = newDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
           await sendTelegram("editMessageText", {
             chat_id: chatId,
             message_id: messageId,
