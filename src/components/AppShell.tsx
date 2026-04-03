@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useNotes } from '@/lib/hooks/useNotes'
 import CaptureBar from './CaptureBar'
 import NavBar from './NavBar'
+import CommandPalette from './CommandPalette'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -24,6 +25,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <NavBar inboxCount={inboxNotes.length} />
+      <CommandPalette onCreateNote={async (content) => {
+        const { error } = await createNote(content)
+        if (error) console.error('Not oluşturulamadı:', error.message)
+      }} />
     </>
   )
 }
