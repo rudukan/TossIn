@@ -49,6 +49,20 @@ export function useNotes(typeFilter?: NoteType | NoteType[]) {
     return () => window.removeEventListener('notes-changed', handler)
   }, [fetchNotes])
 
+  // Supabase Realtime — sync from external changes (Telegram, other devices)
+  useEffect(() => {
+    const channel = getSupabase()
+      .channel('notes-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => {
+        fetchNotes(false)
+      })
+      .subscribe()
+
+    return () => {
+      getSupabase().removeChannel(channel)
+    }
+  }, [fetchNotes])
+
   const createNote = async (content: string) => {
     const { data, error } = await getSupabase()
       .from('notes')
