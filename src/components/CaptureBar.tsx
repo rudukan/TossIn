@@ -18,22 +18,29 @@ export default function CaptureBar({ onCapture }: { onCapture: (content: string)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="sticky top-0 z-20 border-b border-zinc-200 bg-white/80 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
-      <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-3">
+    <form
+      onSubmit={handleSubmit}
+      className="sticky top-0 z-20 border-b border-terminal-border bg-black/95 backdrop-blur-sm"
+    >
+      <div className="mx-auto flex max-w-3xl items-center gap-0 px-4 py-3">
+        <span className="glow-green mr-2 text-terminal-green font-bold select-none">&gt;</span>
         <input
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Aklina ne geldi?"
-          className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-500 dark:focus:bg-zinc-800"
+          placeholder="toss bir not..."
+          className="flex-1 bg-transparent text-terminal-green placeholder:text-terminal-muted caret-terminal-green border-none"
           disabled={saving}
         />
+        {!value.trim() && !saving && (
+          <span className="cursor-blink text-terminal-green select-none">_</span>
+        )}
         <button
           type="submit"
           disabled={!value.trim() || saving}
-          className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="ml-3 border border-terminal-green/30 px-3 py-1 text-xs text-terminal-green transition-all hover:bg-terminal-green/10 hover:border-terminal-green/60 disabled:opacity-20 disabled:hover:bg-transparent"
         >
-          {saving ? '...' : 'At'}
+          {saving ? '...' : 'ENTER'}
         </button>
       </div>
     </form>

@@ -10,7 +10,7 @@ export default function InboxPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-600 dark:border-t-zinc-100" />
+        <span className="text-terminal-green cursor-blink text-sm">Loading...</span>
       </div>
     )
   }
@@ -18,18 +18,21 @@ export default function InboxPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h1 className="text-lg font-semibold">Inbox</h1>
-        <span className="text-sm text-zinc-400">{notes.length} not</span>
+        <h1 className="text-sm font-bold text-terminal-green glow-green tracking-wider">
+          <span className="text-terminal-muted">$</span> INBOX
+        </h1>
+        <span className="text-[11px] text-terminal-muted">[{notes.length}]</span>
       </div>
 
       <NudgeBanner count={notes.length} />
 
       {notes.length === 0 ? (
-        <div className="py-20 text-center text-sm text-zinc-400">
-          Inbox bos. Yukaridan bir not at!
+        <div className="py-20 text-center text-xs text-terminal-muted">
+          -- inbox bos -- <br />
+          <span className="text-terminal-green/50">yukaridan bir not toss et</span>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {notes.map((note) => (
             <NoteCard
               key={note.id}

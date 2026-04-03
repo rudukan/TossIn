@@ -12,20 +12,20 @@ export default function TagPill({
   return (
     <span
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 ${
-        onClick ? 'cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700' : ''
+      className={`inline-flex items-center gap-1 border border-terminal-muted/50 px-2 py-0.5 text-[10px] text-terminal-cyan ${
+        onClick ? 'cursor-pointer hover:border-terminal-cyan/50 hover:bg-terminal-cyan/5' : ''
       }`}
     >
-      {tag}
+      #{tag}
       {removable && (
         <button
           onClick={(e) => {
             e.stopPropagation()
             onRemove?.()
           }}
-          className="ml-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+          className="text-terminal-muted hover:text-terminal-red ml-0.5"
         >
-          &times;
+          x
         </button>
       )}
     </span>

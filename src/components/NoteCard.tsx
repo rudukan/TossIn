@@ -5,17 +5,17 @@ import type { Note, NoteType } from '@/lib/types'
 import TagPill from './TagPill'
 
 const typeLabels: Record<NoteType, string> = {
-  inbox: 'Inbox',
-  in_progress: 'Yapılıyor',
-  waiting: 'Beklemede',
-  done: 'Bitti',
+  inbox: 'INBOX',
+  in_progress: 'ACTIVE',
+  waiting: 'WAIT',
+  done: 'DONE',
 }
 
 const typeColors: Record<NoteType, string> = {
-  inbox: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  in_progress: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
-  waiting: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
-  done: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+  inbox: 'border-blue-500/40 text-blue-400',
+  in_progress: 'border-terminal-amber/40 text-terminal-amber',
+  waiting: 'border-terminal-purple/40 text-terminal-purple',
+  done: 'border-terminal-green/40 text-terminal-green',
 }
 
 export default function NoteCard({
@@ -47,51 +47,49 @@ export default function NoteCard({
   }
 
   return (
-    <div className="group rounded-lg border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+    <div className="group border border-terminal-border bg-terminal-surface p-4 transition-colors hover:border-terminal-muted/60 hover:bg-terminal-surface-hover">
       <div className="flex items-start justify-between gap-3">
-        <p className="flex-1 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-          {note.content}
-        </p>
-        {note.due_date && (
-          <p className={`mt-1 text-[10px] font-medium ${
-            new Date(note.due_date) < new Date() ? 'text-red-400' :
-            new Date(note.due_date).toDateString() === new Date().toDateString() ? 'text-yellow-400' :
-            'text-zinc-500'
-          }`}>
-            {new Date(note.due_date) < new Date() ? '⚠️' :
-             new Date(note.due_date).toDateString() === new Date().toDateString() ? '🔴' : '⏰'}{' '}
-            {new Date(note.due_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}{' '}
-            {new Date(note.due_date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm leading-relaxed text-foreground">
+            {note.content}
           </p>
-        )}
+          {note.due_date && (
+            <p className={`mt-1.5 text-[11px] font-medium ${
+              new Date(note.due_date) < new Date() ? 'text-terminal-red' :
+              new Date(note.due_date).toDateString() === new Date().toDateString() ? 'text-terminal-amber glow-amber' :
+              'text-terminal-muted'
+            }`}>
+              {new Date(note.due_date) < new Date() ? '[OVERDUE]' :
+               new Date(note.due_date).toDateString() === new Date().toDateString() ? '[TODAY]' : '[DUE]'}{' '}
+              {new Date(note.due_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}{' '}
+              {new Date(note.due_date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
         <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={onToggleStar}
-            className={`rounded p-1 transition-colors ${
+            className={`p-1 text-xs transition-colors ${
               note.is_starred
-                ? 'text-amber-500'
-                : 'text-zinc-300 hover:text-amber-400 dark:text-zinc-600'
+                ? 'text-terminal-amber glow-amber'
+                : 'text-terminal-muted hover:text-terminal-amber'
             }`}
             title={note.is_starred ? 'Yildizi kaldir' : 'Yildizla'}
           >
-            <svg className="h-4 w-4" fill={note.is_starred ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
-            </svg>
+            {note.is_starred ? '*' : '.'}
           </button>
           <button
             onClick={() => setShowActions(!showActions)}
-            className="rounded p-1 text-zinc-300 transition-colors hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400"
+            className="p-1 text-xs text-terminal-muted transition-colors hover:text-foreground"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
-            </svg>
+            [...]
           </button>
         </div>
       </div>
 
-      {/* Tags */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${typeColors[note.type]}`}>
+      {/* Status + Tags */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        <span className={`border px-1.5 py-0.5 text-[10px] font-bold ${typeColors[note.type]}`}>
           {typeLabels[note.type]}
         </span>
         {note.tags.map((tag) => (
@@ -102,11 +100,19 @@ export default function NoteCard({
             onRemove={() => onRemoveTag?.(tag)}
           />
         ))}
+        <span className="text-[10px] text-terminal-muted ml-auto">
+          {new Date(note.created_at).toLocaleDateString('tr-TR', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
       </div>
 
       {/* Actions panel */}
       {showActions && (
-        <div className="mt-3 space-y-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+        <div className="mt-3 space-y-3 border-t border-terminal-border pt-3">
           {/* Type changer */}
           {showTypeChanger && (
             <div className="flex flex-wrap gap-1.5">
@@ -115,10 +121,10 @@ export default function NoteCard({
                   key={t}
                   onClick={() => onUpdateType?.(t)}
                   disabled={note.type === t}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  className={`px-2 py-1 text-[11px] font-medium transition-colors border ${
                     note.type === t
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+                      ? 'border-terminal-green/50 text-terminal-green bg-terminal-green/10'
+                      : 'border-terminal-border text-terminal-muted hover:border-terminal-muted hover:text-foreground'
                   }`}
                 >
                   {typeLabels[t]}
@@ -129,35 +135,26 @@ export default function NoteCard({
 
           {/* Tag input */}
           <div className="flex items-center gap-2">
+            <span className="text-terminal-muted text-[11px]">tag:</span>
             <input
               type="text"
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={handleAddTag}
-              placeholder="Etiket ekle + Enter"
-              className="flex-1 rounded border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-zinc-500"
+              placeholder="etiket + Enter"
+              className="flex-1 bg-transparent border-b border-terminal-border px-1 py-1 text-xs text-terminal-cyan placeholder:text-terminal-muted/50 focus:border-terminal-cyan"
             />
             {onDelete && (
               <button
                 onClick={onDelete}
-                className="rounded px-3 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950"
+                className="px-2 py-1 text-[11px] text-terminal-red border border-terminal-red/20 hover:bg-terminal-red/10 transition-colors"
               >
-                Sil
+                rm
               </button>
             )}
           </div>
         </div>
       )}
-
-      {/* Timestamp */}
-      <p className="mt-2 text-[10px] text-zinc-400">
-        {new Date(note.created_at).toLocaleDateString('tr-TR', {
-          day: 'numeric',
-          month: 'short',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}
-      </p>
     </div>
   )
 }

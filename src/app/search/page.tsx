@@ -34,16 +34,21 @@ export default function SearchPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">Ara</h1>
+      <h1 className="text-sm font-bold text-terminal-green glow-green tracking-wider">
+        <span className="text-terminal-muted">$</span> SEARCH
+      </h1>
 
       <form onSubmit={handleSearch}>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Notlarinda ara..."
-          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-500 dark:focus:bg-zinc-800"
-        />
+        <div className="flex items-center border border-terminal-border bg-terminal-surface">
+          <span className="px-3 text-terminal-muted text-xs select-none">grep</span>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="notlarda ara..."
+            className="flex-1 bg-transparent px-2 py-2.5 text-xs text-foreground placeholder:text-terminal-muted/50 border-none"
+          />
+        </div>
       </form>
 
       {/* Tag filter */}
@@ -61,15 +66,15 @@ export default function SearchPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-600 dark:border-t-zinc-100" />
+          <span className="text-terminal-green cursor-blink text-sm">Searching...</span>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="py-20 text-center text-sm text-zinc-400">
-          {searched ? 'Sonuc bulunamadi.' : 'Aramak icin bir sey yaz.'}
+        <div className="py-20 text-center text-xs text-terminal-muted">
+          {searched ? '-- 0 sonuc --' : '-- aramak icin bir sey yaz --'}
         </div>
       ) : (
-        <div className="space-y-3">
-          <span className="text-sm text-zinc-400">{filtered.length} sonuc</span>
+        <div className="space-y-2">
+          <span className="text-[11px] text-terminal-muted">[{filtered.length} sonuc]</span>
           {filtered.map((note) => (
             <NoteCard
               key={note.id}

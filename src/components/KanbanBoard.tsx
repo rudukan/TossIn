@@ -19,11 +19,11 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Note, NoteType } from '@/lib/types'
 
-const columns: { id: NoteType; label: string; color: string }[] = [
-  { id: 'inbox', label: 'Inbox', color: 'text-blue-400' },
-  { id: 'in_progress', label: 'Yapılıyor', color: 'text-orange-400' },
-  { id: 'waiting', label: 'Beklemede', color: 'text-purple-400' },
-  { id: 'done', label: 'Bitti', color: 'text-green-400' },
+const columns: { id: NoteType; label: string; color: string; symbol: string }[] = [
+  { id: 'inbox', label: 'INBOX', color: 'text-blue-400', symbol: '>' },
+  { id: 'in_progress', label: 'ACTIVE', color: 'text-terminal-amber', symbol: '*' },
+  { id: 'waiting', label: 'WAIT', color: 'text-terminal-purple', symbol: '~' },
+  { id: 'done', label: 'DONE', color: 'text-terminal-green', symbol: '+' },
 ]
 
 function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) {
@@ -45,27 +45,27 @@ function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) 
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-lg border border-zinc-800 bg-zinc-900 p-3 transition-shadow ${
-        isDragging ? 'opacity-50 shadow-lg shadow-zinc-900/50' : 'hover:border-zinc-700'
+      className={`border border-terminal-border bg-terminal-surface p-2.5 transition-all ${
+        isDragging ? 'opacity-50 border-terminal-green/30' : 'hover:border-terminal-muted/60 hover:bg-terminal-surface-hover'
       }`}
       {...attributes}
       {...listeners}
     >
-      <p className="text-sm leading-relaxed text-zinc-200">{note.content}</p>
+      <p className="text-xs leading-relaxed text-foreground">{note.content}</p>
       {note.due_date && (
         <p className={`mt-1 text-[10px] font-medium ${
-          new Date(note.due_date) < new Date() ? 'text-red-400' :
-          new Date(note.due_date).toDateString() === new Date().toDateString() ? 'text-yellow-400' :
-          'text-zinc-500'
+          new Date(note.due_date) < new Date() ? 'text-terminal-red' :
+          new Date(note.due_date).toDateString() === new Date().toDateString() ? 'text-terminal-amber' :
+          'text-terminal-muted'
         }`}>
-          {new Date(note.due_date) < new Date() ? '⚠️' :
-           new Date(note.due_date).toDateString() === new Date().toDateString() ? '🔴' : '⏰'}{' '}
+          {new Date(note.due_date) < new Date() ? '[!]' :
+           new Date(note.due_date).toDateString() === new Date().toDateString() ? '[*]' : '[@]'}{' '}
           {new Date(note.due_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}{' '}
           {new Date(note.due_date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
         </p>
       )}
-      <div className="mt-2 flex items-center justify-between">
-        <span className="text-[10px] text-zinc-500">
+      <div className="mt-1.5 flex items-center justify-between">
+        <span className="text-[9px] text-terminal-muted">
           {new Date(note.created_at).toLocaleDateString('tr-TR', {
             day: 'numeric',
             month: 'short',
@@ -76,9 +76,9 @@ function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) 
             e.stopPropagation()
             onDelete()
           }}
-          className="text-[10px] text-zinc-600 hover:text-red-400"
+          className="text-[9px] text-terminal-muted hover:text-terminal-red transition-colors"
         >
-          Sil
+          [rm]
         </button>
       </div>
     </div>
@@ -87,8 +87,8 @@ function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) 
 
 function NotePreview({ note }: { note: Note }) {
   return (
-    <div className="rounded-lg border border-zinc-600 bg-zinc-800 p-3 shadow-xl">
-      <p className="text-sm text-zinc-200">{note.content}</p>
+    <div className="border border-terminal-green/30 bg-terminal-surface p-2.5 shadow-lg shadow-terminal-green/5">
+      <p className="text-xs text-foreground">{note.content}</p>
     </div>
   )
 }
@@ -107,29 +107,29 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-h-[200px] flex-col rounded-xl border p-3 transition-colors ${
+      className={`flex min-h-[200px] flex-col border p-2.5 transition-colors ${
         isOver
-          ? 'border-zinc-600 bg-zinc-800/50'
-          : 'border-zinc-800/50 bg-zinc-950/30'
+          ? 'border-terminal-green/30 bg-terminal-green/5'
+          : 'border-terminal-border bg-black'
       }`}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className={`text-sm font-semibold ${column.color}`}>
-          {column.label}
+      <div className="mb-2.5 flex items-center justify-between border-b border-terminal-border pb-2">
+        <h2 className={`text-[11px] font-bold tracking-wider ${column.color}`}>
+          <span className="text-terminal-muted">{column.symbol}</span> {column.label}
         </h2>
-        <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
-          {notes.length}
+        <span className="text-[10px] text-terminal-muted">
+          [{notes.length}]
         </span>
       </div>
 
       <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-1 flex-col gap-2">
+        <div className="flex flex-1 flex-col gap-1.5">
           {notes.map((note) => (
             <SortableCard key={note.id} note={note} onDelete={() => onDelete(note.id)} />
           ))}
           {notes.length === 0 && (
-            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-zinc-800 py-8">
-              <span className="text-xs text-zinc-600">Surukle birak</span>
+            <div className="flex flex-1 items-center justify-center border border-dashed border-terminal-border/50 py-8">
+              <span className="text-[10px] text-terminal-muted">-- empty --</span>
             </div>
           )}
         </div>
@@ -197,7 +197,7 @@ export default function KanbanBoard({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {columns.map((col) => (
           <Column
             key={col.id}

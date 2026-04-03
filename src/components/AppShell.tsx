@@ -20,7 +20,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         const { error } = await createNote(content)
         if (error) console.error('Not oluşturulamadı:', error.message)
       }} />
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-4">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-4">
         {children}
       </main>
       <NavBar inboxCount={inboxNotes.length} />
