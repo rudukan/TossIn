@@ -75,7 +75,7 @@ function BootSequence({ onComplete }: { onComplete: () => void }) {
             line.type === 'ok' ? 'text-terminal-green' :
             line.type === 'ready' ? 'text-terminal-green font-bold glow-green mt-1' :
             line.type === 'blank' ? 'h-3' :
-            'text-zinc-500'
+            'text-zinc-400'
           }`}
           style={{ animation: 'fadeIn 0.2s ease-out' }}
         >
@@ -159,7 +159,7 @@ export default function LandingPage() {
               <div className="w-2 h-2 rounded-full bg-terminal-red/70" />
               <div className="w-2 h-2 rounded-full bg-terminal-amber/70" />
               <div className="w-2 h-2 rounded-full bg-terminal-green/70" />
-              <span className="ml-2 text-[9px] text-zinc-500 tracking-widest">TOSSIN — TERMINAL</span>
+                            <span className="ml-2 text-[9px] text-zinc-400 tracking-widest">TOSSIN — TERMINAL</span>
             </div>
             <BootSequence onComplete={handleComplete} />
           </div>
@@ -176,10 +176,10 @@ export default function LandingPage() {
                 <br />
                 <span className="text-terminal-green font-medium">AI gerisini halleder.</span>
               </p>
-              <p className="text-xs text-zinc-500 leading-relaxed">
+              <p className="text-sm text-zinc-400 leading-relaxed">
                 Not almak kolay — o nota geri dönmek zor.
                 <br />
-                toss dağınık düşünceyi eyleme çevirir.
+                TossIn dağınık düşünceyi eyleme çevirir.
               </p>
             </div>
 
