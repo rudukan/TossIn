@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 
 const bootLines = [
-  { text: '$ toss --init', delay: 0, type: 'cmd' },
-  { text: 'TOSS v2.5.0 — Personal Execution Assistant', delay: 300, type: 'info' },
+  { text: '$ tossin --init', delay: 0, type: 'cmd' },
+  { text: 'TossIn v2.5.0 — Personal Execution Assistant', delay: 300, type: 'info' },
   { text: '', delay: 500, type: 'blank' },
   { text: 'Loading modules...', delay: 600, type: 'info' },
   { text: '  [OK] Voice capture        (Groq Whisper)', delay: 900, type: 'ok' },
@@ -159,7 +159,7 @@ export default function LandingPage() {
               <div className="w-2 h-2 rounded-full bg-terminal-red/70" />
               <div className="w-2 h-2 rounded-full bg-terminal-amber/70" />
               <div className="w-2 h-2 rounded-full bg-terminal-green/70" />
-              <span className="ml-2 text-[9px] text-zinc-500 tracking-widest">TOSS — TERMINAL</span>
+              <span className="ml-2 text-[9px] text-zinc-500 tracking-widest">TOSSIN — TERMINAL</span>
             </div>
             <BootSequence onComplete={handleComplete} />
           </div>
@@ -167,7 +167,7 @@ export default function LandingPage() {
           {/* Hero content */}
           <div className={`mt-12 space-y-6 transition-all duration-1000 ease-out ${bootDone ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
             <h1 className="text-5xl font-bold tracking-tighter text-terminal-green sm:text-7xl" style={{ textShadow: '0 0 30px rgba(0,255,65,0.3), 0 0 60px rgba(0,255,65,0.1)' }}>
-              toss_
+              TossIn_
             </h1>
 
             <div className="space-y-3 max-w-md">
@@ -292,7 +292,7 @@ export default function LandingPage() {
       {/* ═══ FOOTER ═══ */}
       <footer className="mx-auto max-w-xl px-6 py-6 border-t border-terminal-border/30">
         <div className="flex items-center justify-between text-[9px] text-zinc-500 tracking-wide">
-          <span>{"toss v2.5.0 — built by "}<a href="https://github.com/rudukan" className="text-terminal-green/70 hover:text-terminal-green transition-colors">@rudukan</a></span>
+          <span>{"TossIn v2.5.0 — built by "}<a href="https://github.com/rudukan" className="text-terminal-green/70 hover:text-terminal-green transition-colors">@rudukan</a></span>
           <span>2026</span>
         </div>
       </footer>
