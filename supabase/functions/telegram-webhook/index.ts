@@ -150,8 +150,14 @@ veya
   const data = await res.json();
   if (data.error) throw new Error(`Claude API: ${data.error.message}`);
   let text = data.content[0].text.trim();
-  // Claude bazen ```json ... ``` ile sarar, temizle
-  text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/,  "");
+  // Claude bazen ```json ... ``` ile sarar veya ek açıklama ekler — temizle
+  text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/,  "");
+  // JSON bloğunu bul — ilk { ile son } arası
+  const jsonStart = text.indexOf("{");
+  const jsonEnd = text.lastIndexOf("}");
+  if (jsonStart !== -1 && jsonEnd !== -1) {
+    text = text.substring(jsonStart, jsonEnd + 1);
+  }
   return JSON.parse(text);
 }
 
@@ -337,7 +343,8 @@ Deno.serve(async (req) => {
             }
           }
         } else if (result.action === "create_multiple" && result.items && result.items.length > 0) {
-          const items = result.items.slice(0, 7);
+          const rawItems = result.items.slice(0, 7);
+          const items = rawItems.map((item: unknown) => typeof item === "string" ? item : (item as { content?: string }).content ?? String(item));
           for (const item of items) {
             await createNote(item, "telegram");
           }
@@ -370,7 +377,7 @@ Deno.serve(async (req) => {
             const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short", timeZone: "Europe/Istanbul" });
             await sendTelegram("sendMessage", {
               chat_id: chatId,
-              text: `✓ kaydedildi (⏰ ${dayStr} ${dateStr})`,
+              text: `✓ "${result.content ?? update.message.text}" — kaydedildi (⏰ ${dayStr} ${dateStr})`,
             });
           } else {
             await sendTelegram("sendMessage", {
@@ -562,7 +569,8 @@ Deno.serve(async (req) => {
               }
             }
           } else if (result.action === "create_multiple" && result.items && result.items.length > 0) {
-            const items = result.items.slice(0, 7);
+            const rawItems = result.items.slice(0, 7);
+            const items = rawItems.map((item: unknown) => typeof item === "string" ? item : (item as { content?: string }).content ?? String(item));
             for (const item of items) {
               await createNote(item, "voice");
             }
@@ -595,7 +603,7 @@ Deno.serve(async (req) => {
               const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short", timeZone: "Europe/Istanbul" });
               await sendTelegram("sendMessage", {
                 chat_id: chatId,
-                text: `🎤 ✓ kaydedildi (⏰ ${dayStr} ${dateStr})`,
+                text: `🎤 "${result.content ?? transcript}" — kaydedildi (⏰ ${dayStr} ${dateStr})`,
               });
             } else {
               await sendTelegram("sendMessage", {

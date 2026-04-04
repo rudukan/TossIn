@@ -10,8 +10,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { notes: inboxNotes, createNote } = useNotes('inbox')
 
-  // Login page — no shell
-  if (pathname === '/login') {
+  // Login & Landing — no shell
+  if (pathname === '/login' || pathname === '/landing') {
     return <>{children}</>
   }
 
