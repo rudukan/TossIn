@@ -106,49 +106,51 @@ export default function CommandPalette({ onCreateNote }: { onCreateNote: (conten
       />
 
       {/* Palette */}
-      <div className="relative w-full max-w-lg border border-terminal-green/30 bg-black shadow-lg shadow-terminal-green/5">
+      <div className="relative w-full max-w-lg rounded-2xl border border-terminal-border bg-terminal-surface shadow-2xl shadow-black/50 overflow-hidden">
         {/* Input */}
         <div className="flex items-center border-b border-terminal-border px-4 py-3">
-          <span className="glow-green mr-2 text-terminal-green font-bold select-none">&gt;</span>
+          <svg className="mr-3 h-4 w-4 text-terminal-muted" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="komut veya yeni not..."
-            className="flex-1 bg-transparent text-sm text-terminal-green placeholder:text-terminal-muted caret-terminal-green border-none"
+            placeholder="Komut ara veya yeni not yaz..."
+            className="flex-1 bg-transparent text-sm text-white placeholder:text-terminal-muted border-none"
           />
-          <span className="text-[10px] text-terminal-muted border border-terminal-border px-1.5 py-0.5">ESC</span>
+          <span className="text-[10px] text-terminal-muted rounded-md bg-terminal-surface-hover px-1.5 py-0.5">ESC</span>
         </div>
 
         {/* Results */}
         <div className="max-h-64 overflow-y-auto p-2">
           {isNoteMode ? (
-            <div className="px-3 py-2">
-              <span className="text-[10px] text-terminal-muted">ENTER ile yeni not olarak kaydet:</span>
-              <p className="mt-1 text-sm text-terminal-green">{query}</p>
+            <div className="px-3 py-3">
+              <span className="text-[11px] text-terminal-muted">Enter ile yeni not olarak kaydet:</span>
+              <p className="mt-1 text-sm text-white">{query}</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="px-3 py-4 text-center text-xs text-terminal-muted">
-              -- sonuc yok --
+              Sonuç yok
             </div>
           ) : (
             filtered.map((cmd, i) => (
               <button
                 key={cmd.id}
                 onClick={() => execute(cmd)}
-                className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition-colors ${
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   i === selectedIndex
-                    ? 'bg-terminal-green/10 text-terminal-green'
-                    : 'text-foreground hover:bg-terminal-surface-hover'
+                    ? 'bg-terminal-green/15 text-white'
+                    : 'text-white/80 hover:bg-terminal-surface-hover'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-terminal-muted">{cmd.category}</span>
+                  <span className="text-[10px] font-semibold text-terminal-muted">{cmd.category}</span>
                   <span>{cmd.label}</span>
                 </div>
                 {cmd.shortcut && (
-                  <span className="text-[10px] text-terminal-muted border border-terminal-border px-1.5 py-0.5">{cmd.shortcut}</span>
+                  <span className="text-[10px] text-terminal-muted rounded-md bg-terminal-surface-hover px-1.5 py-0.5">{cmd.shortcut}</span>
                 )}
               </button>
             ))
@@ -158,13 +160,13 @@ export default function CommandPalette({ onCreateNote }: { onCreateNote: (conten
         {/* Footer */}
         <div className="flex items-center gap-4 border-t border-terminal-border px-4 py-2">
           <span className="text-[10px] text-terminal-muted">
-            <span className="border border-terminal-border px-1 py-0.5 mr-1">↑↓</span> gezin
+            <span className="rounded bg-terminal-surface-hover px-1 py-0.5 mr-1">↑↓</span> gezin
           </span>
           <span className="text-[10px] text-terminal-muted">
-            <span className="border border-terminal-border px-1 py-0.5 mr-1">↵</span> calistir
+            <span className="rounded bg-terminal-surface-hover px-1 py-0.5 mr-1">↵</span> çalıştır
           </span>
           <span className="text-[10px] text-terminal-muted">
-            <span className="border border-terminal-border px-1 py-0.5 mr-1">esc</span> kapat
+            <span className="rounded bg-terminal-surface-hover px-1 py-0.5 mr-1">esc</span> kapat
           </span>
         </div>
       </div>

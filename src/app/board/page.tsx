@@ -9,16 +9,14 @@ export default function BoardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <span className="text-terminal-green cursor-blink text-sm">Loading...</span>
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-terminal-border border-t-terminal-green" />
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      <h1 className="text-sm font-bold text-terminal-green glow-green tracking-wider">
-        <span className="text-terminal-muted">$</span> BOARD
-      </h1>
+      <h1 className="text-xl font-bold text-white">Board</h1>
       <KanbanBoard
         notes={notes}
         onUpdateType={(id, type) => updateNote(id, { type })}

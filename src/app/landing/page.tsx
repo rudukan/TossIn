@@ -1,46 +1,36 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-
-const bootLines = [
-  { text: '$ tossin --init', delay: 0, type: 'cmd' },
-  { text: 'TossIn v2.5.0 — Personal Execution Assistant', delay: 300, type: 'info' },
-  { text: '', delay: 500, type: 'blank' },
-  { text: 'Loading modules...', delay: 600, type: 'info' },
-  { text: '  [OK] Voice capture        (Groq Whisper)', delay: 900, type: 'ok' },
-  { text: '  [OK] AI classification    (Claude Haiku)', delay: 1200, type: 'ok' },
-  { text: '  [OK] Semantic matching    (task-state-engine)', delay: 1500, type: 'ok' },
-  { text: '  [OK] Smart reminders      (pg_cron @ 1min)', delay: 1800, type: 'ok' },
-  { text: '  [OK] Real-time sync       (Supabase WS)', delay: 2100, type: 'ok' },
-  { text: '', delay: 2300, type: 'blank' },
-  { text: 'All systems operational. Ready for input.', delay: 2400, type: 'ready' },
-]
 
 const features = [
   {
-    command: '> "auth PR\'ı merge edildi"',
-    response: '✓ "auth modülünü bitir" → DONE',
-    description: 'Semantic task reconciliation. Mevcut task\'ları tarar, doğal dil eşleştirmesi yapar, state günceller.',
+    title: 'Semantic task reconciliation',
+    user: '"auth PR\'ı merge edildi"',
+    bot: '✓ "auth modülünü bitir" tamamlandı',
+    description: 'Mesajını mevcut görevlerinle eşleştirir ve durumu günceller. CRUD değil, context-aware execution.',
   },
   {
-    command: '> "yarın 2\'de Ali ile API review"',
-    response: '✓ kaydedildi (⏰ 5 Nis 14:00)',
-    description: 'NLP date extraction + pg_cron scheduling. 15 dk önce push. Cevapsız → auto-waiting.',
+    title: 'Akıllı tarih & hatırlatma',
+    user: '"yarın 2\'de Ali ile API review"',
+    bot: '✓ kaydedildi — 5 Nis 14:00',
+    description: 'Tarih ve saati otomatik çıkarır. 15 dk önce Telegram\'dan bildirir. Cevap yoksa beklemede\'ye alır.',
   },
   {
-    command: '> "dark mode, rate limiting, docs"',
-    response: '✓ 3 task oluşturuldu\n  • dark mode\n  • rate limiting\n  • docs',
-    description: 'Multi-task parsing. Tek input → N ayrı task entity. LLM-powered intent separation.',
+    title: 'Çoklu görev ayıklama',
+    user: '"dark mode, rate limiting, docs"',
+    bot: '✓ 3 görev oluşturuldu',
+    description: 'Tek mesajdan birden fazla görev entity\'si çıkarır. LLM-powered intent separation.',
   },
   {
-    command: '> 🎤 "deploy pipeline\'ı hallettim"',
-    response: '✓ "CI/CD kur" → DONE',
-    description: 'Voice → Whisper → Claude → semantic match → state update. Fuzzy completion with confidence scoring.',
+    title: 'Sesli kayıt + anlam',
+    user: '🎤 "deploy pipeline\'ı hallettim"',
+    bot: '✓ "CI/CD kur" tamamlandı',
+    description: 'Whisper ile transcribe, Claude ile semantic match. Ses kaydından fuzzy completion.',
   },
 ]
 
-const stats = [
+const stack = [
   { label: 'Capture', value: 'Telegram' },
   { label: 'Transcribe', value: 'Whisper' },
   { label: 'Classify', value: 'Claude' },
@@ -48,46 +38,6 @@ const stats = [
   { label: 'Remind', value: 'pg_cron' },
   { label: 'Deploy', value: 'Vercel' },
 ]
-
-function BootSequence({ onComplete }: { onComplete: () => void }) {
-  const [visibleLines, setVisibleLines] = useState(0)
-  const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
-
-  useEffect(() => {
-    bootLines.forEach((_, i) => {
-      setTimeout(() => {
-        setVisibleLines(i + 1)
-        if (i === bootLines.length - 1) {
-          setTimeout(() => onCompleteRef.current(), 400)
-        }
-      }, bootLines[i].delay)
-    })
-  }, [])
-
-  return (
-    <div className="text-[11px] leading-relaxed sm:text-xs">
-      {bootLines.slice(0, visibleLines).map((line, i) => (
-        <div
-          key={i}
-          className={`${
-            line.type === 'cmd' ? 'text-terminal-green font-bold glow-green' :
-            line.type === 'ok' ? 'text-terminal-green' :
-            line.type === 'ready' ? 'text-terminal-green font-bold glow-green mt-1' :
-            line.type === 'blank' ? 'h-3' :
-            'text-zinc-400'
-          }`}
-          style={{ animation: 'fadeIn 0.2s ease-out' }}
-        >
-          {line.text}
-        </div>
-      ))}
-      {visibleLines < bootLines.length && (
-        <span className="cursor-blink text-terminal-green">█</span>
-      )}
-    </div>
-  )
-}
 
 function FeatureCard({ feature, index }: { feature: typeof features[0]; index: number }) {
   const [visible, setVisible] = useState(false)
@@ -98,7 +48,7 @@ function FeatureCard({ feature, index }: { feature: typeof features[0]; index: n
       ([entry]) => {
         if (entry.isIntersecting) setVisible(true)
       },
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     )
     if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
@@ -107,28 +57,37 @@ function FeatureCard({ feature, index }: { feature: typeof features[0]; index: n
   return (
     <div
       ref={ref}
-      className={`border border-terminal-border bg-terminal-surface/50 p-5 transition-all duration-700 hover:border-terminal-green/20 hover:bg-terminal-surface ${
+      className={`rounded-2xl border border-terminal-border bg-terminal-surface p-6 transition-all duration-700 hover:border-terminal-green/40 hover:bg-terminal-surface-hover ${
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}
       style={{ transitionDelay: `${index * 100}ms` }}
     >
-      <div className="space-y-3">
-        <div className="text-terminal-green text-xs font-bold tracking-wide">{feature.command}</div>
-        <div className="border-l border-terminal-green/40 pl-3 text-[11px] text-foreground whitespace-pre-line font-medium">
-          {feature.response}
+      <h3 className="mb-4 text-sm font-semibold text-white">{feature.title}</h3>
+
+      {/* Chat bubbles */}
+      <div className="space-y-2 mb-4">
+        {/* User message — right aligned, blue */}
+        <div className="flex justify-end">
+          <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-terminal-green px-3 py-2 text-[12px] text-white">
+            {feature.user}
+          </div>
         </div>
-        <p className="text-[11px] text-zinc-500 leading-relaxed">{feature.description}</p>
+        {/* Bot reply — left aligned, surface */}
+        <div className="flex justify-start">
+          <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-terminal-surface-hover px-3 py-2 text-[12px] text-white">
+            {feature.bot}
+          </div>
+        </div>
       </div>
+
+      <p className="text-xs text-terminal-muted leading-relaxed">{feature.description}</p>
     </div>
   )
 }
 
 export default function LandingPage() {
-  const [bootDone, setBootDone] = useState(false)
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
-
-  const handleComplete = useCallback(() => setBootDone(true), [])
 
   const handleWaitlist = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -137,89 +96,79 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-foreground overflow-x-hidden">
+    <div className="min-h-screen bg-[#17212b] text-white overflow-x-hidden">
 
       {/* ═══ HERO ═══ */}
       <section className="relative flex min-h-screen flex-col items-center justify-center px-6">
-        {/* Grid background */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(0,255,65,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,65,0.4) 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
-          }}
-        />
-        {/* Radial fade */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,#0a0a0f_70%)]" />
+        {/* Subtle blue radial glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(42,171,238,0.08)_0%,transparent_60%)]" />
 
-        <div className="relative z-10 w-full max-w-xl">
-          {/* Boot */}
-          <div className={`rounded border border-terminal-border/50 bg-[#0d0d14] p-5 backdrop-blur transition-all duration-700 ${bootDone ? 'opacity-40 scale-[0.97]' : 'opacity-100'}`}>
-            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-terminal-border/30">
-              <div className="w-2 h-2 rounded-full bg-terminal-red/70" />
-              <div className="w-2 h-2 rounded-full bg-terminal-amber/70" />
-              <div className="w-2 h-2 rounded-full bg-terminal-green/70" />
-                            <span className="ml-2 text-[9px] text-zinc-400 tracking-widest">TOSSIN — TERMINAL</span>
-            </div>
-            <BootSequence onComplete={handleComplete} />
+        <div className="relative z-10 w-full max-w-2xl text-center sm:text-left">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-terminal-green/30 bg-terminal-green/10 px-3 py-1 mb-6">
+            <span className="h-1.5 w-1.5 rounded-full bg-terminal-green animate-pulse" />
+            <span className="text-[11px] font-medium text-terminal-green">AI task agent · running live</span>
           </div>
 
-          {/* Hero content */}
-          <div className={`mt-12 space-y-6 transition-all duration-1000 ease-out ${bootDone ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-            <h1 className="text-5xl font-bold tracking-tighter text-terminal-green sm:text-7xl" style={{ textShadow: '0 0 30px rgba(0,255,65,0.3), 0 0 60px rgba(0,255,65,0.1)' }}>
-              TossIn_
-            </h1>
+          {/* Headline */}
+          <h1 className="text-5xl font-bold tracking-tight text-white sm:text-7xl mb-4">
+            Toss<span className="text-terminal-green">In</span>
+          </h1>
 
-            <div className="space-y-3 max-w-md">
-              <p className="text-base text-foreground leading-relaxed sm:text-lg">
-                {"Telegram'a sesli veya yazılı mesaj at."}
-                <br />
-                <span className="text-terminal-green font-medium">AI gerisini halleder.</span>
-              </p>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                Not almak kolay — o nota geri dönmek zor.
-                <br />
-                TossIn dağınık düşünceyi eyleme çevirir.
-              </p>
-            </div>
+          <p className="text-xl text-white/90 leading-relaxed sm:text-2xl mb-3 max-w-lg mx-auto sm:mx-0">
+            Telegram&apos;a sesli veya yazılı mesaj at.
+            <br />
+            <span className="text-terminal-green font-medium">AI gerisini halleder.</span>
+          </p>
 
-            {/* Pipeline visual */}
-            <div className="flex items-center gap-1 text-[10px] text-zinc-500 overflow-x-auto py-2">
-              {['capture', 'understand', 'reconcile', 'remind', 'close'].map((step, i) => (
-                <span key={step} className="flex items-center gap-1 whitespace-nowrap">
-                  <span className="border border-terminal-green/30 px-2 py-0.5 text-terminal-green/90">{step}</span>
-                  {i < 4 && <span className="text-terminal-green/40 mx-0.5">›››</span>}
-                </span>
-              ))}
-            </div>
+          <p className="text-sm text-terminal-muted mb-8 max-w-md mx-auto sm:mx-0">
+            Not almak kolay — o nota geri dönmek zor. TossIn dağınık düşünceyi eyleme çevirir.
+          </p>
 
-            {/* CTA */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center pt-2">
-              <Link
-                href="/"
-                className="group inline-flex items-center justify-center border border-terminal-green text-terminal-green px-6 py-3 text-xs font-bold tracking-widest hover:bg-terminal-green hover:text-black transition-all duration-300"
-              >
-                {"DEMO'YU GOR"}
-                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
-              <span className="text-[10px] text-zinc-500">veya aşağı scroll et ↓</span>
-            </div>
+          {/* Pipeline visual */}
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-[11px] mb-8">
+            {['capture', 'understand', 'reconcile', 'remind', 'close'].map((step, i) => (
+              <span key={step} className="flex items-center gap-1.5">
+                <span className="rounded-full bg-terminal-surface px-3 py-1 text-white/80 font-medium">{step}</span>
+                {i < 4 && <svg className="h-3 w-3 text-terminal-muted" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>}
+              </span>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-center sm:justify-start">
+            <Link
+              href="/"
+              className="group inline-flex items-center justify-center rounded-full bg-terminal-green px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-terminal-green-dim hover:scale-[1.02]"
+            >
+              Demo&apos;yu gör
+              <svg className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
+            <a
+              href="https://github.com/rudukan/TossIn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-full border border-terminal-border bg-terminal-surface px-6 py-3 text-sm font-medium text-white transition-all hover:bg-terminal-surface-hover"
+            >
+              <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+              </svg>
+              GitHub
+            </a>
           </div>
         </div>
       </section>
 
       {/* ═══ FEATURES ═══ */}
-      <section className="mx-auto max-w-xl px-6 py-24">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-px flex-1 bg-terminal-border" />
-          <h2 className="text-[10px] font-bold text-zinc-500 tracking-[0.3em]">FEATURES</h2>
-          <div className="h-px flex-1 bg-terminal-border" />
+      <section className="mx-auto max-w-3xl px-6 py-24">
+        <div className="mb-12 text-center">
+          <h2 className="text-xs font-semibold text-terminal-green tracking-widest uppercase mb-3">Nasıl çalışıyor</h2>
+          <p className="text-2xl font-bold text-white sm:text-3xl">Telegram&apos;a yaz. AI yönetsin.</p>
         </div>
-        <p className="mb-10 text-xs text-zinc-500 text-center">
-          {"Telegram'a yaz. AI analiz etsin. Doğru aksiyonu alsın."}
-        </p>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           {features.map((feature, i) => (
             <FeatureCard key={i} feature={feature} index={i} />
           ))}
@@ -227,61 +176,61 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ STACK ═══ */}
-      <section className="mx-auto max-w-xl px-6 py-16">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="h-px flex-1 bg-terminal-border" />
-          <h2 className="text-[10px] font-bold text-zinc-500 tracking-[0.3em]">STACK</h2>
-          <div className="h-px flex-1 bg-terminal-border" />
+      <section className="mx-auto max-w-3xl px-6 py-16">
+        <div className="mb-8 text-center">
+          <h2 className="text-xs font-semibold text-terminal-green tracking-widest uppercase mb-3">Stack</h2>
+          <p className="text-sm text-terminal-muted">Modern, ucuz, hızlı.</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-px bg-terminal-border/30 border border-terminal-border">
-          {stats.map((stat) => (
-            <div key={stat.label} className="bg-[#0a0a0f] px-4 py-3 text-center hover:bg-terminal-surface transition-colors">
-              <div className="text-[9px] text-zinc-500 tracking-widest mb-1">{stat.label.toUpperCase()}</div>
-              <div className="text-xs text-terminal-green font-medium">{stat.value}</div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {stack.map((item) => (
+            <div key={item.label} className="rounded-2xl border border-terminal-border bg-terminal-surface px-4 py-4 text-center hover:border-terminal-green/30 hover:bg-terminal-surface-hover transition-all">
+              <div className="text-[10px] text-terminal-muted uppercase tracking-wider mb-1">{item.label}</div>
+              <div className="text-sm font-semibold text-white">{item.value}</div>
             </div>
           ))}
         </div>
+
+        <p className="mt-8 text-center text-xs text-terminal-muted">
+          Aylık maliyet: <span className="text-terminal-green font-semibold">&lt; $1</span> — Claude Haiku + Groq free tier + Supabase free plan
+        </p>
       </section>
 
       {/* ═══ WAITLIST ═══ */}
-      <section className="mx-auto max-w-xl px-6 py-24">
-        <div className="border border-terminal-green/20 p-8 relative overflow-hidden">
-          {/* Glow effect */}
-          <div className="absolute -top-20 -right-20 w-40 h-40 bg-terminal-green/5 rounded-full blur-3xl" />
+      <section className="mx-auto max-w-2xl px-6 py-24">
+        <div className="rounded-3xl border border-terminal-green/20 bg-gradient-to-br from-terminal-surface to-terminal-surface-hover p-8 sm:p-10 relative overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-60 h-60 bg-terminal-green/10 rounded-full blur-3xl" />
 
-          <div className="relative z-10">
-            <div className="text-[9px] text-zinc-500 tracking-[0.3em] mb-1">EARLY ACCESS</div>
-            <h2 className="text-lg font-bold text-terminal-green glow-green mb-2">
+          <div className="relative z-10 text-center">
+            <h2 className="text-2xl font-bold text-white sm:text-3xl mb-3">
               Erken erişim
             </h2>
-            <p className="text-xs text-zinc-500 mb-6 max-w-sm">
-              {"Şu an sadece ben kullanıyorum. İlgilenen olursa waitlist'e yazılsın — açınca haber vereceğim."}
+            <p className="text-sm text-terminal-muted mb-6 max-w-md mx-auto">
+              Şu an sadece ben kullanıyorum. İlgilenen olursa waitlist&apos;e yazılsın — açınca haber vereceğim.
             </p>
 
             {submitted ? (
-              <div className="flex items-center gap-2 text-sm text-terminal-green glow-green">
-                <span>✓</span>
-                <span>Kaydedildi. Haber vereceğim.</span>
+              <div className="inline-flex items-center gap-2 rounded-full bg-terminal-green/15 px-4 py-2 text-sm text-terminal-green">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+                Kaydedildi. Haber vereceğim.
               </div>
             ) : (
-              <form onSubmit={handleWaitlist} className="flex gap-2">
-                <div className="flex flex-1 items-center border border-terminal-border bg-[#0d0d14] hover:border-terminal-muted transition-colors">
-                  <span className="px-3 text-terminal-green select-none text-xs">{">"}</span>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@adresin.com"
-                    className="flex-1 bg-transparent py-2.5 text-xs text-terminal-green placeholder:text-zinc-500/50 caret-terminal-green border-none"
-                    required
-                  />
-                </div>
+              <form onSubmit={handleWaitlist} className="flex flex-col gap-2 sm:flex-row max-w-md mx-auto">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@adresin.com"
+                  className="flex-1 rounded-full bg-[#17212b] px-5 py-3 text-sm text-white placeholder:text-terminal-muted border border-terminal-border focus:border-terminal-green"
+                  required
+                />
                 <button
                   type="submit"
-                  className="border border-terminal-green text-terminal-green px-5 text-[11px] font-bold tracking-widest hover:bg-terminal-green hover:text-black transition-all duration-300"
+                  className="rounded-full bg-terminal-green px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-terminal-green-dim hover:scale-[1.02]"
                 >
-                  JOIN
+                  Katıl
                 </button>
               </form>
             )}
@@ -290,9 +239,9 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ FOOTER ═══ */}
-      <footer className="mx-auto max-w-xl px-6 py-6 border-t border-terminal-border/30">
-        <div className="flex items-center justify-between text-[9px] text-zinc-500 tracking-wide">
-          <span>{"TossIn v2.5.0 — built by "}<a href="https://github.com/rudukan" className="text-terminal-green/70 hover:text-terminal-green transition-colors">@rudukan</a></span>
+      <footer className="mx-auto max-w-3xl px-6 py-8 border-t border-terminal-border">
+        <div className="flex items-center justify-between text-xs text-terminal-muted">
+          <span>TossIn — built by <a href="https://github.com/rudukan" className="text-terminal-green hover:underline">@rudukan</a></span>
           <span>2026</span>
         </div>
       </footer>

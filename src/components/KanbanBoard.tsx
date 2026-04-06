@@ -19,11 +19,11 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Note, NoteType } from '@/lib/types'
 
-const columns: { id: NoteType; label: string; color: string; symbol: string }[] = [
-  { id: 'inbox', label: 'INBOX', color: 'text-blue-400', symbol: '>' },
-  { id: 'in_progress', label: 'ACTIVE', color: 'text-terminal-amber', symbol: '*' },
-  { id: 'waiting', label: 'WAIT', color: 'text-terminal-purple', symbol: '~' },
-  { id: 'done', label: 'DONE', color: 'text-terminal-green', symbol: '+' },
+const columns: { id: NoteType; label: string; dot: string }[] = [
+  { id: 'inbox', label: 'Inbox', dot: 'bg-[#2AABEE]' },
+  { id: 'in_progress', label: 'Yapılıyor', dot: 'bg-[#E8A33D]' },
+  { id: 'waiting', label: 'Beklemede', dot: 'bg-[#B388FF]' },
+  { id: 'done', label: 'Bitti', dot: 'bg-[#4FAE4F]' },
 ]
 
 function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) {
@@ -41,44 +41,46 @@ function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) 
     transition,
   }
 
+  const isOverdue = note.due_date && new Date(note.due_date) < new Date()
+  const isToday = note.due_date && new Date(note.due_date).toDateString() === new Date().toDateString()
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`border border-terminal-border bg-terminal-surface p-2.5 transition-all ${
-        isDragging ? 'opacity-50 border-terminal-green/30' : 'hover:border-terminal-muted/60 hover:bg-terminal-surface-hover'
+      className={`rounded-xl border border-terminal-border bg-terminal-surface p-3 transition-all ${
+        isDragging ? 'opacity-50 border-terminal-green/40' : 'hover:border-terminal-green/30 hover:bg-terminal-surface-hover'
       }`}
       {...attributes}
       {...listeners}
     >
-      <p className="text-xs leading-relaxed text-foreground">{note.content}</p>
+      <p className="text-sm leading-relaxed text-white">{note.content}</p>
       {note.due_date && (
-        <p className={`mt-1 text-[10px] font-medium ${
-          new Date(note.due_date) < new Date() ? 'text-terminal-red' :
-          new Date(note.due_date).toDateString() === new Date().toDateString() ? 'text-terminal-amber' :
-          'text-terminal-muted'
+        <div className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+          isOverdue ? 'bg-terminal-red/15 text-terminal-red' :
+          isToday ? 'bg-terminal-amber/15 text-terminal-amber' :
+          'bg-terminal-surface-hover text-terminal-muted'
         }`}>
-          {new Date(note.due_date) < new Date() ? '[!]' :
-           new Date(note.due_date).toDateString() === new Date().toDateString() ? '[*]' : '[@]'}{' '}
-          {new Date(note.due_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}{' '}
+          <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          {new Date(note.due_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+          {' '}
           {new Date(note.due_date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-        </p>
+        </div>
       )}
-      <div className="mt-1.5 flex items-center justify-between">
-        <span className="text-[9px] text-terminal-muted">
-          {new Date(note.created_at).toLocaleDateString('tr-TR', {
-            day: 'numeric',
-            month: 'short',
-          })}
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-[10px] text-terminal-muted">
+          {new Date(note.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
         </span>
         <button
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
-          className="text-[9px] text-terminal-muted hover:text-terminal-red transition-colors"
+          className="text-[10px] text-terminal-muted hover:text-terminal-red transition-colors"
         >
-          [rm]
+          Sil
         </button>
       </div>
     </div>
@@ -87,8 +89,8 @@ function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) 
 
 function NotePreview({ note }: { note: Note }) {
   return (
-    <div className="border border-terminal-green/30 bg-terminal-surface p-2.5 shadow-lg shadow-terminal-green/5">
-      <p className="text-xs text-foreground">{note.content}</p>
+    <div className="rounded-xl border border-terminal-green/40 bg-terminal-surface p-3 shadow-2xl shadow-terminal-green/20">
+      <p className="text-sm text-white">{note.content}</p>
     </div>
   )
 }
@@ -107,29 +109,32 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-h-[200px] flex-col border p-2.5 transition-colors ${
+      className={`flex min-h-[280px] flex-col rounded-2xl p-4 transition-colors ${
         isOver
-          ? 'border-terminal-green/30 bg-terminal-green/5'
-          : 'border-terminal-border bg-black'
+          ? 'bg-terminal-green/10'
+          : 'bg-[#1c2734]'
       }`}
     >
-      <div className="mb-2.5 flex items-center justify-between border-b border-terminal-border pb-2">
-        <h2 className={`text-[11px] font-bold tracking-wider ${column.color}`}>
-          <span className="text-terminal-muted">{column.symbol}</span> {column.label}
-        </h2>
-        <span className="text-[10px] text-terminal-muted">
-          [{notes.length}]
+      <div className="mb-3 flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${column.dot}`} />
+          <h2 className="text-xs font-semibold text-white">
+            {column.label}
+          </h2>
+        </div>
+        <span className="rounded-full bg-terminal-surface px-2 py-0.5 text-[10px] font-medium text-terminal-muted">
+          {notes.length}
         </span>
       </div>
 
       <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-1 flex-col gap-1.5">
+        <div className="flex flex-1 flex-col gap-2">
           {notes.map((note) => (
             <SortableCard key={note.id} note={note} onDelete={() => onDelete(note.id)} />
           ))}
           {notes.length === 0 && (
-            <div className="flex flex-1 items-center justify-center border border-dashed border-terminal-border/50 py-8">
-              <span className="text-[10px] text-terminal-muted">-- empty --</span>
+            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-terminal-border py-8">
+              <span className="text-xs text-terminal-muted">Boş</span>
             </div>
           )}
         </div>
@@ -162,9 +167,7 @@ export default function KanbanBoard({
     if (note) setActiveNote(note)
   }
 
-  const handleDragOver = (_event: DragOverEvent) => {
-    // Visual feedback handled by Column's isOver
-  }
+  const handleDragOver = (_event: DragOverEvent) => {}
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveNote(null)
@@ -175,14 +178,12 @@ export default function KanbanBoard({
     const note = notes.find((n) => n.id === noteId)
     if (!note) return
 
-    // Dropped on a column directly
     const targetColumn = columns.find((c) => c.id === over.id)
     if (targetColumn && targetColumn.id !== note.type) {
       onUpdateType(noteId, targetColumn.id)
       return
     }
 
-    // Dropped on another note — find which column that note belongs to
     const targetNote = notes.find((n) => n.id === over.id)
     if (targetNote && targetNote.type !== note.type) {
       onUpdateType(noteId, targetNote.type)
@@ -197,7 +198,7 @@ export default function KanbanBoard({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {columns.map((col) => (
           <Column
             key={col.id}

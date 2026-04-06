@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-export default function CaptureBar({ onCapture }: { onCapture: (content: string) => Promise<void> }) {
+export default function CaptureBar({ onCapture, maxWidth = 'max-w-3xl' }: { onCapture: (content: string) => Promise<void>; maxWidth?: string }) {
   const [value, setValue] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -20,27 +20,23 @@ export default function CaptureBar({ onCapture }: { onCapture: (content: string)
   return (
     <form
       onSubmit={handleSubmit}
-      className="sticky top-0 z-20 border-b border-terminal-border bg-black/95 backdrop-blur-sm"
+      className="sticky top-0 z-20 border-b border-terminal-border bg-[#17212b]/95 backdrop-blur-md"
     >
-      <div className="mx-auto flex max-w-3xl items-center gap-0 px-4 py-3">
-        <span className="glow-green mr-2 text-terminal-green font-bold select-none">&gt;</span>
+      <div className={`mx-auto flex ${maxWidth} items-center gap-2 px-4 py-3`}>
         <input
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="toss bir not..."
-          className="flex-1 bg-transparent text-terminal-green placeholder:text-terminal-muted caret-terminal-green border-none"
+          placeholder="Aklına ne geldi?"
+          className="flex-1 rounded-full bg-terminal-surface px-5 py-2.5 text-sm text-white placeholder:text-terminal-muted border-none"
           disabled={saving}
         />
-        {!value.trim() && !saving && (
-          <span className="cursor-blink text-terminal-green select-none">_</span>
-        )}
         <button
           type="submit"
           disabled={!value.trim() || saving}
-          className="ml-3 border border-terminal-green/30 px-3 py-1 text-xs text-terminal-green transition-all hover:bg-terminal-green/10 hover:border-terminal-green/60 disabled:opacity-20 disabled:hover:bg-transparent"
+          className="rounded-full bg-terminal-green px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-terminal-green-dim disabled:opacity-30 disabled:hover:bg-terminal-green"
         >
-          {saving ? '...' : 'ENTER'}
+          {saving ? '...' : 'Gönder'}
         </button>
       </div>
     </form>

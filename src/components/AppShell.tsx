@@ -15,16 +15,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
+  // Board needs more room for 4 columns
+  const maxWidth = pathname === '/board' ? 'max-w-6xl' : 'max-w-3xl'
+
   return (
     <>
-      <CaptureBar onCapture={async (content) => {
-        const { error } = await createNote(content)
-        if (error) console.error('Not oluşturulamadı:', error.message)
-      }} />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-4">
+      <CaptureBar
+        maxWidth={maxWidth}
+        onCapture={async (content) => {
+          const { error } = await createNote(content)
+          if (error) console.error('Not oluşturulamadı:', error.message)
+        }}
+      />
+      <main className={`mx-auto w-full ${maxWidth} flex-1 px-4 py-4`}>
         {children}
       </main>
-      <NavBar inboxCount={inboxNotes.length} />
+      <NavBar inboxCount={inboxNotes.length} maxWidth={maxWidth} />
       <CommandPalette onCreateNote={async (content) => {
         const { error } = await createNote(content)
         if (error) console.error('Not oluşturulamadı:', error.message)

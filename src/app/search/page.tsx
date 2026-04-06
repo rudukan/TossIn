@@ -34,19 +34,19 @@ export default function SearchPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-sm font-bold text-terminal-green glow-green tracking-wider">
-        <span className="text-terminal-muted">$</span> SEARCH
-      </h1>
+      <h1 className="text-xl font-bold text-white">Ara</h1>
 
       <form onSubmit={handleSearch}>
-        <div className="flex items-center border border-terminal-border bg-terminal-surface">
-          <span className="px-3 text-terminal-muted text-xs select-none">grep</span>
+        <div className="flex items-center rounded-full bg-terminal-surface px-4">
+          <svg className="h-4 w-4 text-terminal-muted" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="notlarda ara..."
-            className="flex-1 bg-transparent px-2 py-2.5 text-xs text-foreground placeholder:text-terminal-muted/50 border-none"
+            placeholder="Notlarda ara..."
+            className="flex-1 bg-transparent px-3 py-2.5 text-sm text-white placeholder:text-terminal-muted border-none"
           />
         </div>
       </form>
@@ -66,15 +66,15 @@ export default function SearchPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <span className="text-terminal-green cursor-blink text-sm">Searching...</span>
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-terminal-border border-t-terminal-green" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="py-20 text-center text-xs text-terminal-muted">
-          {searched ? '-- 0 sonuc --' : '-- aramak icin bir sey yaz --'}
+        <div className="py-20 text-center text-sm text-terminal-muted">
+          {searched ? 'Sonuç bulunamadı.' : 'Aramak için bir şey yaz.'}
         </div>
       ) : (
         <div className="space-y-2">
-          <span className="text-[11px] text-terminal-muted">[{filtered.length} sonuc]</span>
+          <span className="text-xs text-terminal-muted">{filtered.length} sonuç</span>
           {filtered.map((note) => (
             <NoteCard
               key={note.id}

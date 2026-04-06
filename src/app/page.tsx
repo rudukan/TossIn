@@ -10,7 +10,7 @@ export default function InboxPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <span className="text-terminal-green cursor-blink text-sm">Loading...</span>
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-terminal-border border-t-terminal-green" />
       </div>
     )
   }
@@ -18,18 +18,16 @@ export default function InboxPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h1 className="text-sm font-bold text-terminal-green glow-green tracking-wider">
-          <span className="text-terminal-muted">$</span> INBOX
-        </h1>
-        <span className="text-[11px] text-terminal-muted">[{notes.length}]</span>
+        <h1 className="text-xl font-bold text-white">Inbox</h1>
+        <span className="text-xs text-terminal-muted">{notes.length} not</span>
       </div>
 
       <NudgeBanner count={notes.length} />
 
       {notes.length === 0 ? (
-        <div className="py-20 text-center text-xs text-terminal-muted">
-          -- inbox bos -- <br />
-          <span className="text-terminal-green/50">yukaridan bir not toss et</span>
+        <div className="py-20 text-center text-sm text-terminal-muted">
+          Inbox boş.<br />
+          <span className="text-terminal-green">Yukarıdan bir not ekle.</span>
         </div>
       ) : (
         <div className="space-y-2">
