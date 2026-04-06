@@ -81,6 +81,7 @@ export default function SearchPage() {
               note={note}
               showTypeChanger
               onUpdateType={(type) => updateNote(note.id, { type })}
+              onUpdateContent={(content) => updateNote(note.id, { content })}
               onToggleStar={() => updateNote(note.id, { is_starred: !note.is_starred })}
               onAddTag={(tag) => {
                 if (!note.tags.includes(tag)) {

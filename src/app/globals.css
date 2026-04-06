@@ -42,6 +42,10 @@
   scrollbar-color: #2b3a4a #17212b;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: #17212b;
   color: #ffffff;

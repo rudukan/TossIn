@@ -15,7 +15,7 @@ export function useNotes(typeFilter?: NoteType | NoteType[]) {
       .from('notes')
       .select('*')
       .order('is_starred', { ascending: false })
-      .order('created_at', { ascending: false })
+      .order('updated_at', { ascending: false })
 
     if (typeFilter) {
       if (Array.isArray(typeFilter)) {
@@ -80,15 +80,20 @@ export function useNotes(typeFilter?: NoteType | NoteType[]) {
   }
 
   const updateNote = async (id: string, updates: Partial<Pick<Note, 'content' | 'type' | 'tags' | 'is_starred' | 'due_date'>>) => {
-    // Optimistic update
-    setNotes((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, ...updates, updated_at: new Date().toISOString() } : n))
+    // Optimistic update — güncellenen notu en üste taşı
+    setNotes((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, ...updates, updated_at: new Date().toISOString() } : n))
         .filter((n) => {
           if (!typeFilter) return true
           const types = Array.isArray(typeFilter) ? typeFilter : [typeFilter]
           return types.includes(n.type)
         })
-    )
+      // Sort: starred first, then by updated_at desc
+      return updated.sort((a, b) => {
+        if (a.is_starred !== b.is_starred) return a.is_starred ? -1 : 1
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      })
+    })
     skipNextEvent.current = true
     window.dispatchEvent(new Event('notes-changed'))
 

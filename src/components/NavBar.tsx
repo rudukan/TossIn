@@ -14,26 +14,28 @@ export default function NavBar({ inboxCount, maxWidth = 'max-w-3xl' }: { inboxCo
 
   return (
     <nav className="sticky bottom-0 z-20 border-t border-terminal-border bg-[#17212b]/95 backdrop-blur-md">
-      <div className={`mx-auto flex ${maxWidth} items-center justify-around`}>
+      <div className={`mx-auto flex w-full ${maxWidth} items-center justify-around px-4`}>
         {tabs.map(({ href, label, icon: Icon }) => {
           const active = pathname === href
           return (
             <Link
               key={href}
               href={href}
-              className={`relative flex flex-1 flex-col items-center gap-1 py-3 text-[11px] font-medium transition-colors ${
+              className={`flex flex-1 flex-col items-center gap-1 py-3 text-[11px] font-medium transition-colors ${
                 active
                   ? 'text-terminal-green'
                   : 'text-terminal-muted hover:text-white'
               }`}
             >
-              <Icon className="h-5 w-5" />
+              <div className="relative">
+                <Icon className="h-5 w-5" />
+                {href === '/' && inboxCount !== undefined && inboxCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-terminal-green px-1 text-[9px] font-bold text-white ring-2 ring-[#17212b]">
+                    {inboxCount}
+                  </span>
+                )}
+              </div>
               <span>{label}</span>
-              {href === '/' && inboxCount !== undefined && inboxCount >= 5 && (
-                <span className="absolute right-[30%] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-terminal-green px-1 text-[9px] font-bold text-white">
-                  {inboxCount}
-                </span>
-              )}
             </Link>
           )
         })}

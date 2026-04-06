@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -26,7 +26,19 @@ const columns: { id: NoteType; label: string; dot: string }[] = [
   { id: 'done', label: 'Bitti', dot: 'bg-[#4FAE4F]' },
 ]
 
-function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) {
+function SortableCard({
+  note,
+  onDelete,
+  onUpdate,
+}: {
+  note: Note
+  onDelete: () => void
+  onUpdate: (content: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(note.content)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
   const {
     attributes,
     listeners,
@@ -34,11 +46,33 @@ function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) 
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: note.id })
+  } = useSortable({ id: note.id, disabled: editing })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  }
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus()
+      textareaRef.current.select()
+    }
+  }, [editing])
+
+  const save = () => {
+    const trimmed = value.trim()
+    if (trimmed && trimmed !== note.content) {
+      onUpdate(trimmed)
+    } else {
+      setValue(note.content)
+    }
+    setEditing(false)
+  }
+
+  const cancel = () => {
+    setValue(note.content)
+    setEditing(false)
   }
 
   const isOverdue = note.due_date && new Date(note.due_date) < new Date()
@@ -48,14 +82,45 @@ function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) 
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-xl border border-terminal-border bg-terminal-surface p-3 transition-all ${
-        isDragging ? 'opacity-50 border-terminal-green/40' : 'hover:border-terminal-green/30 hover:bg-terminal-surface-hover'
+      className={`rounded-xl border bg-terminal-surface p-3 transition-all ${
+        isDragging ? 'opacity-50 border-terminal-green/40' :
+        editing ? 'border-terminal-green/50' :
+        'border-terminal-border hover:border-terminal-green/30 hover:bg-terminal-surface-hover'
       }`}
-      {...attributes}
-      {...listeners}
+      {...(editing ? {} : attributes)}
+      {...(editing ? {} : listeners)}
     >
-      <p className="text-sm leading-relaxed text-white">{note.content}</p>
-      {note.due_date && (
+      {editing ? (
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              save()
+            } else if (e.key === 'Escape') {
+              cancel()
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full resize-none bg-transparent text-sm leading-relaxed text-white border-none p-0"
+          rows={Math.max(2, value.split('\n').length)}
+        />
+      ) : (
+        <p
+          className="text-sm leading-relaxed text-white cursor-text"
+          onDoubleClick={(e) => {
+            e.stopPropagation()
+            setEditing(true)
+          }}
+        >
+          {note.content}
+        </p>
+      )}
+
+      {note.due_date && !editing && (
         <div className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
           isOverdue ? 'bg-terminal-red/15 text-terminal-red' :
           isToday ? 'bg-terminal-amber/15 text-terminal-amber' :
@@ -69,19 +134,45 @@ function SortableCard({ note, onDelete }: { note: Note; onDelete: () => void }) 
           {new Date(note.due_date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
         </div>
       )}
+
       <div className="mt-2 flex items-center justify-between">
         <span className="text-[10px] text-terminal-muted">
           {new Date(note.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
         </span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete()
-          }}
-          className="text-[10px] text-terminal-muted hover:text-terminal-red transition-colors"
-        >
-          Sil
-        </button>
+        <div className="flex items-center gap-2">
+          {!editing && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setEditing(true)
+              }}
+              className="text-[10px] text-terminal-muted hover:text-terminal-green transition-colors"
+            >
+              Düzenle
+            </button>
+          )}
+          {editing ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                save()
+              }}
+              className="text-[10px] text-terminal-green font-semibold hover:underline"
+            >
+              Kaydet
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete()
+              }}
+              className="text-[10px] text-terminal-muted hover:text-terminal-red transition-colors"
+            >
+              Sil
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -99,10 +190,12 @@ function Column({
   column,
   notes,
   onDelete,
+  onUpdate,
 }: {
   column: (typeof columns)[number]
   notes: Note[]
   onDelete: (id: string) => void
+  onUpdate: (id: string, content: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
 
@@ -130,7 +223,12 @@ function Column({
       <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
         <div className="flex flex-1 flex-col gap-2">
           {notes.map((note) => (
-            <SortableCard key={note.id} note={note} onDelete={() => onDelete(note.id)} />
+            <SortableCard
+              key={note.id}
+              note={note}
+              onDelete={() => onDelete(note.id)}
+              onUpdate={(content) => onUpdate(note.id, content)}
+            />
           ))}
           {notes.length === 0 && (
             <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-terminal-border py-8">
@@ -146,10 +244,12 @@ function Column({
 export default function KanbanBoard({
   notes,
   onUpdateType,
+  onUpdateContent,
   onDelete,
 }: {
   notes: Note[]
   onUpdateType: (id: string, type: NoteType) => void
+  onUpdateContent: (id: string, content: string) => void
   onDelete: (id: string) => void
 }) {
   const [activeNote, setActiveNote] = useState<Note | null>(null)
@@ -205,6 +305,7 @@ export default function KanbanBoard({
             column={col}
             notes={notesByType(col.id)}
             onDelete={onDelete}
+            onUpdate={onUpdateContent}
           />
         ))}
       </div>

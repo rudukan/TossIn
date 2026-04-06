@@ -21,7 +21,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CaptureBar
-        maxWidth={maxWidth}
         onCapture={async (content) => {
           const { error } = await createNote(content)
           if (error) console.error('Not oluşturulamadı:', error.message)
@@ -30,7 +29,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main className={`mx-auto w-full ${maxWidth} flex-1 px-4 py-4`}>
         {children}
       </main>
-      <NavBar inboxCount={inboxNotes.length} maxWidth={maxWidth} />
+      <NavBar inboxCount={inboxNotes.length} />
       <CommandPalette onCreateNote={async (content) => {
         const { error } = await createNote(content)
         if (error) console.error('Not oluşturulamadı:', error.message)

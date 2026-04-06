@@ -22,7 +22,7 @@ export default function CaptureBar({ onCapture, maxWidth = 'max-w-3xl' }: { onCa
       onSubmit={handleSubmit}
       className="sticky top-0 z-20 border-b border-terminal-border bg-[#17212b]/95 backdrop-blur-md"
     >
-      <div className={`mx-auto flex ${maxWidth} items-center gap-2 px-4 py-3`}>
+      <div className={`mx-auto flex w-full ${maxWidth} items-center gap-2 px-4 py-3`}>
         <input
           type="text"
           value={value}

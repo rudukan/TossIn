@@ -52,22 +52,38 @@ Deno.serve(async (_req) => {
       }
     }
 
-    // 2. Cevapsız hatırlatmaları kontrol et (30 dk geçmiş)
-    const { data: unanswered } = await supabase
+    // 2. Cevapsız hatırlatmaları kontrol et (30 dk geçmiş, en fazla 60 dk)
+    // .in() ile explicit allowlist — done ve waiting hariç
+    // Sadece son 1 saatte hatırlatılan notlar — eski reminded notlar zaten işlenmiş
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const sixtyMinAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    const { data: unanswered, error: unansweredErr } = await supabase
       .from("notes")
-      .select("id, content")
+      .select("id, content, type")
       .eq("reminded", true)
+      .in("type", ["inbox", "in_progress"])
       .not("reminded_at", "is", null)
-      .not("type", "eq", "done")
-      .not("type", "eq", "waiting")
-      .lte("reminded_at", new Date(Date.now() - 30 * 60 * 1000).toISOString());
+      .lte("reminded_at", thirtyMinAgo)
+      .gte("reminded_at", sixtyMinAgo);
+
+    if (unansweredErr) {
+      console.error("Unanswered query error:", unansweredErr);
+    }
 
     if (unanswered && unanswered.length > 0) {
       for (const note of unanswered) {
-        await supabase
+        const { error: updateErr } = await supabase
           .from("notes")
           .update({ type: "waiting", updated_at: new Date().toISOString() })
-          .eq("id", note.id);
+          .eq("id", note.id)
+          .eq("reminded", true) // race protection — yalnızca hala reminded=true ise
+          .in("type", ["inbox", "in_progress"]); // güncel type hala uygun mu
+
+        if (updateErr) {
+          console.error(`Move to waiting failed for ${note.id}:`, updateErr);
+          continue;
+        }
 
         await sendTelegram("sendMessage", {
           chat_id: OWNER_CHAT_ID,

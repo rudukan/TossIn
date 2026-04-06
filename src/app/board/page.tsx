@@ -20,6 +20,7 @@ export default function BoardPage() {
       <KanbanBoard
         notes={notes}
         onUpdateType={(id, type) => updateNote(id, { type })}
+        onUpdateContent={(id, content) => updateNote(id, { content })}
         onDelete={(id) => deleteNote(id)}
       />
     </div>

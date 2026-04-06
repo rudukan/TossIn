@@ -66,7 +66,7 @@ async function transcribeVoice(fileId: string): Promise<string> {
 }
 
 interface ClassifyResult {
-  action: "complete" | "create" | "create_multiple" | "move" | "query";
+  action: "complete" | "create" | "create_multiple" | "move" | "query" | "reschedule";
   matched_note_id?: string;
   confidence?: number;
   content?: string;
@@ -128,7 +128,9 @@ Görev:
 5. ÖNEMLİ: Tek kelimelik veya çok kısa belirsiz mesajlar yeni not olarak kaydedilmeli. Tamamlama/geçiş için açık eylem ifadesi gerekli.
 6. Sadece bir notu tamamla veya taşı. Birden fazla eşleşiyorsa en yakın olanı seç.
 7. Mesajda birden fazla ayrı görev varsa bunları ayrı ayrı notlara böl. Maksimum 7 not.
-8. Mesajda tarih/saat bilgisi varsa due_date olarak çıkar (ISO 8601). "yarın" = bir sonraki gün, "cuma" = en yakın cuma. Saat belirtilmemişse needs_time: true.${voiceHint}
+8. Mesajda tarih/saat bilgisi varsa due_date olarak çıkar (ISO 8601). "yarın" = bir sonraki gün, "cuma" = en yakın cuma. Saat belirtilmemişse needs_time: true.
+9. Eğer mesaj hem mevcut bir notu güncelliyor (move/complete) hem yeni tarih/saat içeriyorsa, due_date alanını da JSON'a ekle. Örn: "Ali ile toplantıyı saat 21'e al" → move + due_date.
+10. Eğer mesaj sadece mevcut bir notun tarih/saatini güncelliyorsa (state değişikliği yok) action'ı "reschedule" yap.${voiceHint}
 
 JSON döndür (başka bir şey yazma):
 { "action": "complete", "matched_note_id": "uuid", "confidence": 0.95 }
@@ -139,7 +141,9 @@ veya
 veya
 { "action": "create_multiple", "items": ["not 1", "not 2"] }
 veya
-{ "action": "move", "matched_note_id": "uuid", "target_type": "in_progress", "confidence": 0.95 }
+{ "action": "move", "matched_note_id": "uuid", "target_type": "in_progress", "confidence": 0.95, "due_date": "2026-04-06T21:00:00+03:00" }
+veya
+{ "action": "reschedule", "matched_note_id": "uuid", "due_date": "2026-04-06T21:00:00+03:00", "confidence": 0.95 }
 veya
 { "action": "query", "query_type": "today" }`,
         },
@@ -219,9 +223,18 @@ Deno.serve(async (req) => {
             },
           });
         } else if (result.action === "move" && result.confidence !== undefined && result.confidence >= 0.9) {
+          const updateData: Record<string, unknown> = {
+            type: result.target_type,
+            updated_at: new Date().toISOString(),
+          };
+          if (result.due_date) {
+            updateData.due_date = result.due_date;
+            updateData.reminded = false;
+            updateData.reminded_at = null;
+          }
           await supabase
             .from("notes")
-            .update({ type: result.target_type, updated_at: new Date().toISOString() })
+            .update(updateData)
             .eq("id", result.matched_note_id);
 
           const { data: note } = await supabase
@@ -232,9 +245,15 @@ Deno.serve(async (req) => {
 
           const emoji = result.target_type === "in_progress" ? "📋" : "⏸";
           const label = result.target_type === "in_progress" ? "Yapılıyor" : "Beklemede";
+          let text = `${emoji} "${note?.content}" → ${label}`;
+          if (result.due_date) {
+            const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
+            const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short", timeZone: "Europe/Istanbul" });
+            text += `\n⏰ ${dayStr} ${dateStr}`;
+          }
           await sendTelegram("sendMessage", {
             chat_id: chatId,
-            text: `${emoji} "${note?.content}" → ${label}`,
+            text,
           });
         } else if (result.action === "move") {
           const { data: note } = await supabase
@@ -256,6 +275,29 @@ Deno.serve(async (req) => {
                 ],
               ],
             },
+          });
+        } else if (result.action === "reschedule" && result.matched_note_id && result.due_date) {
+          await supabase
+            .from("notes")
+            .update({
+              due_date: result.due_date,
+              reminded: false,
+              reminded_at: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", result.matched_note_id);
+
+          const { data: note } = await supabase
+            .from("notes")
+            .select("content")
+            .eq("id", result.matched_note_id)
+            .single();
+
+          const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
+          const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short", timeZone: "Europe/Istanbul" });
+          await sendTelegram("sendMessage", {
+            chat_id: chatId,
+            text: `⏰ "${note?.content}" → ${dayStr} ${dateStr}`,
           });
         } else if (result.action === "query") {
           let queryFilter: string[];
@@ -447,9 +489,18 @@ Deno.serve(async (req) => {
               },
             });
           } else if (result.action === "move" && result.confidence !== undefined && result.confidence >= 0.9) {
+            const updateData: Record<string, unknown> = {
+              type: result.target_type,
+              updated_at: new Date().toISOString(),
+            };
+            if (result.due_date) {
+              updateData.due_date = result.due_date;
+              updateData.reminded = false;
+              updateData.reminded_at = null;
+            }
             await supabase
               .from("notes")
-              .update({ type: result.target_type, updated_at: new Date().toISOString() })
+              .update(updateData)
               .eq("id", result.matched_note_id);
 
             const { data: note } = await supabase
@@ -460,9 +511,15 @@ Deno.serve(async (req) => {
 
             const emoji = result.target_type === "in_progress" ? "📋" : "⏸";
             const label = result.target_type === "in_progress" ? "Yapılıyor" : "Beklemede";
+            let text = `🎤 ${emoji} "${note?.content}" → ${label}`;
+            if (result.due_date) {
+              const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
+              const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short", timeZone: "Europe/Istanbul" });
+              text += `\n⏰ ${dayStr} ${dateStr}`;
+            }
             await sendTelegram("sendMessage", {
               chat_id: chatId,
-              text: `🎤 ${emoji} "${note?.content}" → ${label}`,
+              text,
             });
           } else if (result.action === "move") {
             const { data: note } = await supabase
@@ -484,6 +541,29 @@ Deno.serve(async (req) => {
                   ],
                 ],
               },
+            });
+          } else if (result.action === "reschedule" && result.matched_note_id && result.due_date) {
+            await supabase
+              .from("notes")
+              .update({
+                due_date: result.due_date,
+                reminded: false,
+                reminded_at: null,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", result.matched_note_id);
+
+            const { data: note } = await supabase
+              .from("notes")
+              .select("content")
+              .eq("id", result.matched_note_id)
+              .single();
+
+            const dateStr = new Date(result.due_date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
+            const dayStr = new Date(result.due_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short", timeZone: "Europe/Istanbul" });
+            await sendTelegram("sendMessage", {
+              chat_id: chatId,
+              text: `🎤 ⏰ "${note?.content}" → ${dayStr} ${dateStr}`,
             });
           } else if (result.action === "query") {
             let queryFilter: string[];
