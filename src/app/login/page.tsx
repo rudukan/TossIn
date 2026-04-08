@@ -39,19 +39,23 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="email"
+            name="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ornek@mail.com"
             required
             autoFocus
+            autoComplete="username"
             className="w-full rounded-full border border-terminal-border bg-terminal-surface px-5 py-3 text-sm text-white placeholder:text-terminal-muted outline-none transition-colors focus:border-[#2AABEE]"
           />
           <input
             type="password"
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Şifre"
             required
+            autoComplete="current-password"
             className="w-full rounded-full border border-terminal-border bg-terminal-surface px-5 py-3 text-sm text-white placeholder:text-terminal-muted outline-none transition-colors focus:border-[#2AABEE]"
           />
           <button
