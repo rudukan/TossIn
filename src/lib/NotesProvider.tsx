@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { getSupabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/hooks/useAuth'
 import type { Note, NoteType } from '@/lib/types'
 
 interface NotesContextValue {
@@ -24,11 +25,13 @@ function sortNotes(notes: Note[]): Note[] {
 }
 
 export function NotesProvider({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth()
   const [allNotes, setAllNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
   const initialFetchDone = useRef(false)
 
   const fetchAll = useCallback(async () => {
+    if (!user) return
     const { data, error } = await getSupabase()
       .from('notes')
       .select('*')
@@ -40,18 +43,25 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
     setLoading(false)
     initialFetchDone.current = true
-  }, [])
+  }, [user])
 
-  // Initial fetch
+  // Initial fetch — wait for user
   useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      setAllNotes([])
+      setLoading(false)
+      return
+    }
     fetchAll()
-  }, [fetchAll])
+  }, [fetchAll, user, authLoading])
 
-  // Realtime subscription — single channel for the whole app
+  // Realtime subscription — filtered by user_id
   useEffect(() => {
+    if (!user) return
     const channel = getSupabase()
-      .channel('notes-global-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, (payload) => {
+      .channel(`notes-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `user_id=eq.${user.id}` }, (payload) => {
         // Optimistic merge based on event type — avoid full refetch
         if (payload.eventType === 'INSERT') {
           const newNote = payload.new as Note
@@ -72,12 +82,13 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     return () => {
       getSupabase().removeChannel(channel)
     }
-  }, [])
+  }, [user])
 
   const createNote = useCallback(async (content: string) => {
+    if (!user) return { data: null, error: new Error('Not authenticated') }
     const { data, error } = await getSupabase()
       .from('notes')
-      .insert({ content, type: 'inbox', source: 'web' })
+      .insert({ content, type: 'inbox', source: 'web', user_id: user.id })
       .select()
       .single()
 
@@ -85,7 +96,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       setAllNotes((prev) => sortNotes([data as Note, ...prev]))
     }
     return { data: data as Note | null, error }
-  }, [])
+  }, [user])
 
   const updateNote = useCallback(async (
     id: string,

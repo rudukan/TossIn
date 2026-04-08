@@ -218,7 +218,7 @@ export default function NoteCard({
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
                 placeholder="Yaz ve Enter'a bas..."
-                className="flex-1 rounded-full bg-terminal-surface-hover px-3 py-1.5 text-xs text-white placeholder:text-terminal-muted/60 border-none"
+                className="flex-1 rounded-full border border-terminal-border bg-[#17212b] px-4 py-2 text-xs text-white placeholder:text-terminal-muted hover:border-terminal-muted/60"
               />
               {onDelete && (
                 <button

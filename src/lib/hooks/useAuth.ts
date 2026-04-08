@@ -22,19 +22,10 @@ export function useAuth() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signInWithGoogle = () =>
-    getSupabase().auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
-
-  const signInWithMagicLink = (email: string) =>
-    getSupabase().auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    })
+  const signInWithPassword = (email: string, password: string) =>
+    getSupabase().auth.signInWithPassword({ email, password })
 
   const signOut = () => getSupabase().auth.signOut()
 
-  return { user, loading, signInWithGoogle, signInWithMagicLink, signOut }
+  return { user, loading, signInWithPassword, signOut }
 }
