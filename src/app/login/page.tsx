@@ -9,6 +9,7 @@ export default function LoginPage() {
   const { signInWithPassword } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -58,6 +59,15 @@ export default function LoginPage() {
             autoComplete="current-password"
             className="w-full rounded-full border border-terminal-border bg-terminal-surface px-5 py-3 text-sm text-white placeholder:text-terminal-muted outline-none transition-colors focus:border-[#2AABEE]"
           />
+          <label className="flex items-center gap-2 px-2 text-xs text-terminal-muted cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 accent-[#2AABEE]"
+            />
+            Beni hatırla
+          </label>
           <button
             type="submit"
             disabled={loading}
