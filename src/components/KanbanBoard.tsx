@@ -4,11 +4,13 @@ import { useState, useRef, useEffect } from 'react'
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
+  pointerWithin,
+  rectIntersection,
   PointerSensor,
   TouchSensor,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -278,22 +280,30 @@ export default function KanbanBoard({
     const note = notes.find((n) => n.id === noteId)
     if (!note) return
 
-    const targetColumn = columns.find((c) => c.id === over.id)
+    const overId = over.id as string
+
+    const targetColumn = columns.find((c) => c.id === overId)
     if (targetColumn && targetColumn.id !== note.type) {
       onUpdateType(noteId, targetColumn.id)
       return
     }
 
-    const targetNote = notes.find((n) => n.id === over.id)
+    const targetNote = notes.find((n) => n.id === overId)
     if (targetNote && targetNote.type !== note.type) {
       onUpdateType(noteId, targetNote.type)
     }
   }
 
+  const collisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args)
+    if (pointerCollisions.length > 0) return pointerCollisions
+    return rectIntersection(args)
+  }
+
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
