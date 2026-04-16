@@ -274,11 +274,7 @@ export default function KanbanBoard({
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveNote(null)
     const { active, over } = event
-    console.log('[dragEnd]', { activeId: active.id, overId: over?.id, over })
-    if (!over) {
-      console.warn('[dragEnd] no over target — drop missed')
-      return
-    }
+    if (!over) return
 
     const noteId = active.id as string
     const note = notes.find((n) => n.id === noteId)
@@ -288,19 +284,14 @@ export default function KanbanBoard({
 
     const targetColumn = columns.find((c) => c.id === overId)
     if (targetColumn && targetColumn.id !== note.type) {
-      console.log('[dragEnd] → column match, updating type to', targetColumn.id)
       onUpdateType(noteId, targetColumn.id)
       return
     }
 
     const targetNote = notes.find((n) => n.id === overId)
     if (targetNote && targetNote.type !== note.type) {
-      console.log('[dragEnd] → note match, updating type to', targetNote.type)
       onUpdateType(noteId, targetNote.type)
-      return
     }
-
-    console.warn('[dragEnd] overId did not match column or note of different type', { overId, noteType: note.type })
   }
 
   const collisionDetection: CollisionDetection = (args) => {
