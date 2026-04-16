@@ -115,6 +115,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       .single()
 
     if (error) {
+      console.error('[updateNote] Supabase error:', error, 'id:', id, 'updates:', updates)
       // Rollback by refetching
       fetchAll()
     }
