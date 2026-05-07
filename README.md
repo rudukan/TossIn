@@ -1,36 +1,118 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
 
-## Getting Started
+# TossIn
 
-First, run the development server:
+**Toss it. Review it. Keep it.**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Aklınıza gelenleri Telegram'a atın, AI sizin için sınıflandırsın, web'de Kanban'da yönetin.
+
+[![Live demo](https://img.shields.io/badge/demo-toss--in--v3xp.vercel.app-2AABEE?style=flat-square)](https://toss-in-v3xp.vercel.app)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth%20%2B%20Edge-3ECF8E?style=flat-square&logo=supabase)
+![Claude](https://img.shields.io/badge/AI-Claude%20Haiku%204.5-D97757?style=flat-square)
+
+[Live demo](https://toss-in-v3xp.vercel.app) · [Telegram bot](https://t.me/tossinBot) · [Issues](https://github.com/rudukan/TossIn/issues)
+
+</div>
+
+---
+
+## Nedir?
+
+TossIn, kişisel bir görev/not ajanı. Klasik to-do uygulamalarından farkı: **Telegram üzerinden konuşma diliyle** çalışıyor.
+
+> "fatura öde" yaz → inbox'a düşer
+> "fatura ödendi" yaz → AI önceki notu bulur, Bitti'ye taşır
+> "yarın saat 10'da Ahmet ile toplantı" yaz → otomatik hatırlatma kurulur
+
+Sesli mesaj, çoklu görev, "bugün ne var?" sorgusu, gecikmiş hatırlatmalar — hepsi Telegram'dan. Web tarafı ise sakin bir Kanban board.
+
+## Özellikler
+
+- 💬 **Telegram'dan capture** — yazılı veya sesli mesaj at, AI sınıflandırsın
+- 🧠 **Semantik eşleştirme** — "X yapıldı" mesajı, mevcut "X yap" görevini bulup Bitti'ye taşır
+- 🎯 **4-kolonlu Kanban** — Inbox / Yapılıyor / Beklemede / Bitti, drag & drop
+- ⏰ **Akıllı hatırlatmalar** — pg_cron + Edge Function ile otomatik bildirim
+- 🔍 **Türkçe full-text search** — Postgres `tsvector` ile
+- 🔐 **Auth + RLS** — Supabase Auth, satır-bazlı yetki
+- ⚡ **Realtime sync** — bir cihazda yapılan değişiklik diğerlerinde anında
+
+## Görseller
+
+<div align="center">
+
+| Landing | Inbox | Board | Telegram |
+|---------|-------|-------|----------|
+| ![Landing](public/slides/landing-hero.png) | ![Inbox](public/slides/toss-in-v3xp.vercel.app_.png) | ![Board](<public/slides/toss-in-v3xp.vercel.app_ (1).png>) | ![Telegram](public/slides/telegram.png) |
+
+</div>
+
+## Mimari
+
+```
+┌─────────────┐         ┌──────────────────┐
+│  Telegram   │ ──────▶ │  Edge Function   │
+│  (text/voice)│         │  (Deno)          │
+└─────────────┘         │  ├─ Whisper STT  │
+                        │  ├─ Claude AI    │
+                        │  └─ Supabase ops │
+                        └────────┬─────────┘
+                                 │
+                                 ▼
+┌─────────────┐         ┌──────────────────┐
+│  Next.js    │ ◀─────▶ │  Supabase        │
+│  (Vercel)   │ realtime│  Postgres + RLS  │
+└─────────────┘         │  pg_cron         │
+                        └──────────────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Katman | Teknoloji |
+|--------|-----------|
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind v4 |
+| Backend | Supabase (Postgres + Auth + Realtime + Edge Functions + pg_cron) |
+| AI | Claude Haiku 4.5 (sınıflandırma), Groq Whisper Large v3 (ses-yazı) |
+| Bot | Telegram Bot API |
+| Deploy | Vercel (web), Supabase (edge functions) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Lokal kurulum
 
-## Learn More
+```bash
+git clone https://github.com/rudukan/TossIn.git
+cd TossIn
+npm install
+cp .env.example .env.local
+# .env.local'ı kendi Supabase bilgilerinle doldur
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+`.env.local`:
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Telegram bot ve Edge Functions için ayrıca Supabase secrets gerekiyor — detay için [`.env.example`](.env.example).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Yapılacaklar
 
-## Deploy on Vercel
+- [ ] Multi-user Telegram (`/connect` flow)
+- [ ] PWA (mobil home screen)
+- [ ] Sabah özeti + gün sonu cron'ları
+- [ ] Recurring tasks
+- [ ] Multi-source capture (WhatsApp, e-posta)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Lisans
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
+
+---
+
+<div align="center">
+
+Bir kişisel proje — geri bildirim ve PR'lar memnuniyetle kabul edilir.
+
+Kuran: [@rudukan](https://github.com/rudukan)
+
+</div>

@@ -17,7 +17,8 @@
 
 - `TELEGRAM_OWNER_CHAT_ID` ile sadece tek kullanıcıdan gelen mesajlar işlenir
 - Eşleşmeyen chat ID → sessizce ignore edilir (yanıt yok)
-- Supabase RLS şu an devre dışı (geliştirme aşaması) — auth eklenince aktif edilecek
+- Supabase RLS aktif: tüm `notes` satırları `auth.uid() = user_id` policy'si ile korunur
+- Web girişi: e-posta + şifre (Supabase Auth)
 
 ## API Key Rotation
 

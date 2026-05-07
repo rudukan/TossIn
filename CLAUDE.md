@@ -42,14 +42,19 @@ src/
 
 ## Data Model
 
-Notes have 4 types: `inbox`, `actionable`, `reference`, `done`
+Notes have 4 types: `inbox`, `in_progress`, `waiting`, `done`
 Sources: `web`, `telegram`, `voice`
+
+## Auth & RLS
+
+- Email + password login (Supabase Auth)
+- RLS enabled on `notes`; policies bind rows to `auth.uid() = user_id`
+- Telegram webhook writes notes with `user_id` from `TELEGRAM_OWNER_USER_ID` env (single-user setup; mimari multi-user-ready)
 
 ## Key Rules
 
 - Keep it simple. No over-engineering.
 - No social features, no markdown editor, no folder hierarchy.
 - Read Next.js docs from `node_modules/next/dist/docs/` before using unfamiliar APIs.
-- GitHub repo: rudukan/TossIn (private). `gh` CLI at `/c/Program Files/GitHub CLI`.
+- GitHub repo: rudukan/TossIn. `gh` CLI at `/c/Program Files/GitHub CLI`.
 - Supabase project: `fuctxjzkddlmwdqtzoiz` (eu-west-1)
-- Auth temporarily disabled — RLS off, user_id nullable. Will be re-enabled later.
