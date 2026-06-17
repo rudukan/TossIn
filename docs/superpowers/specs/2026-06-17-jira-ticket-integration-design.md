@@ -16,6 +16,7 @@ Birincil kullanım: iş görüşmesi demosu — AI'ın canlı çıktısını ve 
 | Tetikleme | Onay ile — her notun altında "🎫 Jira'ya gönder" butonu |
 | Ticket içeriği | AI yapılandırır (summary + description) |
 | Hedef | Tek sabit proje + her zaman issue type "Task" |
+| Status | Set edilmez — ticket workflow'un ilk durumunda (TO DO) doğar |
 | Buton kapsamı | Tekil notlarda var; `create_multiple` (toplu) notlarda **yok** |
 | Önizleme | Yok — butona basınca direkt açılır, sonuç (ticket linki) gösterilir |
 | Dil | summary/description **Türkçe** |
@@ -62,6 +63,8 @@ Butona basınca (callback_query, action="jira"):
 ```
 
 Buton, tekil not kaydeden tüm dallara eklenir: `create`, `due_date`'li `create`, `needs_time`'lı `create` (text ve voice yolları). `create_multiple` dalına **eklenmez**.
+
+Bu sayede ses kaydı senaryosu da kapsanır: kullanıcı ses atar → `transcribeVoice` → `classifyMessage` → not + "🎫 Jira'ya gönder" butonu → basınca SCRUM'da TO DO kolonunda ticket açılır. Yeni ticket Jira workflow'unun ilk durumunda (TO DO) doğar; status ayrıca set edilmez (transition API çağrısı yok).
 
 Browse URL formatı: `{JIRA_BASE_URL}/browse/{issueKey}`.
 
