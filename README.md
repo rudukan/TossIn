@@ -49,21 +49,18 @@ Sesli mesaj, çoklu görev, "bugün ne var?" sorgusu, gecikmiş hatırlatmalar �
 
 ## Mimari
 
-```
-┌─────────────┐         ┌──────────────────┐
-│  Telegram   │ ──────▶ │  Edge Function   │
-│  (text/voice)│         │  (Deno)          │
-└─────────────┘         │  ├─ Whisper STT  │
-                        │  ├─ Claude AI    │
-                        │  └─ Supabase ops │
-                        └────────┬─────────┘
-                                 │
-                                 ▼
-┌─────────────┐         ┌──────────────────┐
-│  Next.js    │ ◀─────▶ │  Supabase        │
-│  (Vercel)   │ realtime│  Postgres + RLS  │
-└─────────────┘         │  pg_cron         │
-                        └──────────────────┘
+```mermaid
+flowchart LR
+    Telegram["Telegram<br/>Metin / ses"] --> Edge["Edge Function · Deno<br/>Whisper STT · Claude AI<br/>Supabase işlemleri"]
+    Edge --> Database[("Supabase<br/>Postgres · RLS · pg_cron")]
+    Web["Next.js<br/>Vercel"] <-->|Realtime| Database
+
+    classDef app fill:#172b4d,stroke:#579dff,color:#ffffff
+    classDef compute fill:#35234f,stroke:#b69dfb,color:#ffffff
+    classDef data fill:#14382b,stroke:#3ecf8e,color:#ffffff
+    class Telegram,Web app
+    class Edge compute
+    class Database data
 ```
 
 ## Stack
