@@ -1,11 +1,18 @@
 'use client'
 
 import { useNotes } from '@/lib/hooks/useNotes'
+import { typeLabels, type Note, type NoteType } from '@/lib/types'
 import NoteCard from '@/components/NoteCard'
 import NudgeBanner from '@/components/NudgeBanner'
 
 export default function InboxPage() {
-  const { notes, loading, updateNote, deleteNote } = useNotes('inbox')
+  const { notes, loading, updateNote, deleteNote, showToast } = useNotes('inbox')
+
+  // The card leaves the Inbox on move, so offer a way back
+  const move = (note: Note, type: NoteType) => {
+    updateNote(note.id, { type })
+    showToast(`"${typeLabels[type]}" olarak işaretlendi`, () => updateNote(note.id, { type: note.type }))
+  }
 
   if (loading) {
     return (
@@ -35,8 +42,8 @@ export default function InboxPage() {
             <NoteCard
               key={note.id}
               note={note}
-              showTypeChanger
-              onUpdateType={(type) => updateNote(note.id, { type })}
+              hideType
+              onUpdateType={(type) => move(note, type)}
               onUpdateContent={(content) => updateNote(note.id, { content })}
               onToggleStar={() => updateNote(note.id, { is_starred: !note.is_starred })}
               onAddTag={(tag) => {

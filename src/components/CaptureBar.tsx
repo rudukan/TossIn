@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
 
-export default function CaptureBar({ onCapture, maxWidth = 'max-w-3xl' }: { onCapture: (content: string) => Promise<void>; maxWidth?: string }) {
+export default function CaptureBar({ onCapture, maxWidth = 'max-w-3xl' }: { onCapture: (content: string) => Promise<boolean>; maxWidth?: string }) {
   const [value, setValue] = useState('')
   const [saving, setSaving] = useState(false)
   const { signOut } = useAuth()
@@ -14,8 +14,8 @@ export default function CaptureBar({ onCapture, maxWidth = 'max-w-3xl' }: { onCa
     if (!trimmed || saving) return
 
     setSaving(true)
-    await onCapture(trimmed)
-    setValue('')
+    const saved = await onCapture(trimmed)
+    if (saved) setValue('')
     setSaving(false)
   }
 

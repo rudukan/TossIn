@@ -5,12 +5,25 @@ import { getSupabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/useAuth'
 import type { Note, NoteType } from '@/lib/types'
 
+export interface Toast {
+  id: number
+  message: string
+  kind: 'info' | 'error'
+  onUndo?: () => void
+}
+
+const UNDO_MS = 5000
+
 interface NotesContextValue {
   allNotes: Note[]
   loading: boolean
+  toast: Toast | null
+  dismissToast: () => void
+  showError: (message: string) => void
+  showToast: (message: string, onUndo?: () => void) => void
   createNote: (content: string) => Promise<{ data: Note | null; error: unknown }>
   updateNote: (id: string, updates: Partial<Pick<Note, 'content' | 'type' | 'tags' | 'is_starred' | 'due_date'>>) => Promise<{ data: Note | null; error: unknown }>
-  deleteNote: (id: string) => Promise<{ error: unknown }>
+  deleteNote: (id: string) => void
   searchNotes: (query: string) => Promise<{ data: Note[] | null; error: unknown }>
   refetch: () => Promise<void>
 }
@@ -27,8 +40,16 @@ function sortNotes(notes: Note[]): Note[] {
 export function NotesProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth()
   const [allNotes, setAllNotes] = useState<Note[]>([])
-  const [loading, setLoading] = useState(true)
-  const initialFetchDone = useRef(false)
+  // Which user's notes are in allNotes — loading and visibility derive from this
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
+  const [toast, setToast] = useState<Toast | null>(null)
+  // Deleted notes waiting out the undo window, keyed by note id
+  const pendingDeletes = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+
+  const dismissToast = useCallback(() => setToast(null), [])
+  const showError = useCallback((message: string) => {
+    setToast({ id: Date.now(), message, kind: 'error' })
+  }, [])
 
   const fetchAll = useCallback(async () => {
     if (!user) return
@@ -39,20 +60,14 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       .order('updated_at', { ascending: false })
 
     if (!error && data) {
-      setAllNotes(data as Note[])
+      setAllNotes((data as Note[]).filter((n) => !pendingDeletes.current.has(n.id)))
     }
-    setLoading(false)
-    initialFetchDone.current = true
+    setLoadedFor(user.id)
   }, [user])
 
   // Initial fetch — wait for user
   useEffect(() => {
-    if (authLoading) return
-    if (!user) {
-      setAllNotes([])
-      setLoading(false)
-      return
-    }
+    if (authLoading || !user) return
     fetchAll()
   }, [fetchAll, user, authLoading])
 
@@ -83,6 +98,18 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       getSupabase().removeChannel(channel)
     }
   }, [user])
+
+  const showToast = useCallback((message: string, onUndo?: () => void) => {
+    setToast({
+      id: Date.now(),
+      message,
+      kind: 'info',
+      onUndo: onUndo && (() => {
+        onUndo()
+        setToast(null)
+      }),
+    })
+  }, [])
 
   const createNote = useCallback(async (content: string) => {
     if (!user) return { data: null, error: new Error('Not authenticated') }
@@ -117,18 +144,41 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       // Rollback by refetching
       fetchAll()
+      showError('Değişiklik kaydedilemedi.')
     }
     return { data: data as Note | null, error }
-  }, [fetchAll])
+  }, [fetchAll, showError])
 
-  const deleteNote = useCallback(async (id: string) => {
+  // Delete is held back for UNDO_MS so it can be undone; the row is only
+  // removed from the database once the window passes.
+  const deleteNote = useCallback((id: string) => {
+    const note = allNotes.find((n) => n.id === id)
+    if (!note) return
+
     setAllNotes((prev) => prev.filter((n) => n.id !== id))
-    const { error } = await getSupabase().from('notes').delete().eq('id', id)
-    if (error) {
-      fetchAll()
-    }
-    return { error }
-  }, [fetchAll])
+
+    const timer = setTimeout(async () => {
+      pendingDeletes.current.delete(id)
+      const { error } = await getSupabase().from('notes').delete().eq('id', id)
+      if (error) {
+        fetchAll()
+        showError('Not silinemedi.')
+      }
+    }, UNDO_MS)
+    pendingDeletes.current.set(id, timer)
+
+    setToast({
+      id: Date.now(),
+      message: 'Not silindi',
+      kind: 'info',
+      onUndo: () => {
+        clearTimeout(timer)
+        pendingDeletes.current.delete(id)
+        setAllNotes((prev) => (prev.some((n) => n.id === id) ? prev : sortNotes([...prev, note])))
+        setToast(null)
+      },
+    })
+  }, [allNotes, fetchAll, showError])
 
   const searchNotes = useCallback(async (query: string) => {
     const { data, error } = await getSupabase()
@@ -140,9 +190,24 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     return { data: data as Note[] | null, error }
   }, [])
 
+  const ready = !!user && loadedFor === user.id
+  const loading = authLoading || (!!user && !ready)
+
   const value = useMemo(
-    () => ({ allNotes, loading, createNote, updateNote, deleteNote, searchNotes, refetch: fetchAll }),
-    [allNotes, loading, createNote, updateNote, deleteNote, searchNotes, fetchAll]
+    () => ({
+      allNotes: ready ? allNotes : [],
+      loading,
+      toast,
+      dismissToast,
+      showError,
+      showToast,
+      createNote,
+      updateNote,
+      deleteNote,
+      searchNotes,
+      refetch: fetchAll,
+    }),
+    [ready, allNotes, loading, toast, dismissToast, showError, showToast, createNote, updateNote, deleteNote, searchNotes, fetchAll]
   )
 
   return <NotesContext.Provider value={value}>{children}</NotesContext.Provider>
@@ -166,5 +231,13 @@ export function useNotes(typeFilter?: NoteType | NoteType[]) {
     deleteNote: ctx.deleteNote,
     searchNotes: ctx.searchNotes,
     refetch: ctx.refetch,
+    showError: ctx.showError,
+    showToast: ctx.showToast,
   }
+}
+
+export function useToast() {
+  const ctx = useContext(NotesContext)
+  if (!ctx) throw new Error('useToast must be used within NotesProvider')
+  return { toast: ctx.toast, dismissToast: ctx.dismissToast }
 }

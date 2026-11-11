@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import type { Note, NoteType } from '@/lib/types'
+import { NOTE_TYPES, typeLabels, type Note, type NoteType } from '@/lib/types'
 import TagPill from './TagPill'
 
-const typeLabels: Record<NoteType, string> = {
-  inbox: 'Inbox',
-  in_progress: 'Yapılıyor',
-  waiting: 'Beklemede',
-  done: 'Bitti',
+const typeDots: Record<NoteType, string> = {
+  inbox: 'bg-[#2AABEE]',
+  in_progress: 'bg-[#E8A33D]',
+  waiting: 'bg-[#B388FF]',
+  done: 'bg-[#4FAE4F]',
 }
 
 const typeColors: Record<NoteType, string> = {
@@ -26,7 +26,7 @@ export default function NoteCard({
   onAddTag,
   onRemoveTag,
   onDelete,
-  showTypeChanger = false,
+  hideType = false,
 }: {
   note: Note
   onUpdateType?: (type: NoteType) => void
@@ -35,7 +35,8 @@ export default function NoteCard({
   onAddTag?: (tag: string) => void
   onRemoveTag?: (tag: string) => void
   onDelete?: () => void
-  showTypeChanger?: boolean
+  /** Hide the status badge when the page already implies it (Inbox) */
+  hideType?: boolean
 }) {
   const [tagInput, setTagInput] = useState('')
   const [showActions, setShowActions] = useState(false)
@@ -50,9 +51,10 @@ export default function NoteCard({
     }
   }, [editing])
 
-  useEffect(() => {
+  const startEdit = () => {
     setEditValue(note.content)
-  }, [note.content])
+    setEditing(true)
+  }
 
   const saveEdit = () => {
     const trimmed = editValue.trim()
@@ -81,7 +83,7 @@ export default function NoteCard({
   const isToday = note.due_date && new Date(note.due_date).toDateString() === new Date().toDateString()
 
   return (
-    <div className="group rounded-2xl border border-terminal-border bg-terminal-surface p-4 transition-all hover:border-terminal-green/30 hover:bg-terminal-surface-hover">
+    <div className="rounded-2xl border border-terminal-border bg-terminal-surface p-4 transition-colors hover:border-terminal-green/30">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           {editing ? (
@@ -104,7 +106,7 @@ export default function NoteCard({
           ) : (
             <p
               className="text-sm leading-relaxed text-white cursor-text"
-              onDoubleClick={() => onUpdateContent && setEditing(true)}
+              onDoubleClick={() => onUpdateContent && startEdit()}
             >
               {note.content}
             </p>
@@ -127,12 +129,14 @@ export default function NoteCard({
         <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={onToggleStar}
-            className={`rounded-full p-1.5 transition-colors ${
+            className={`rounded-full p-2 transition-colors ${
               note.is_starred
                 ? 'text-terminal-amber'
                 : 'text-terminal-muted hover:text-terminal-amber hover:bg-terminal-surface-hover'
             }`}
             title={note.is_starred ? 'Yıldızı kaldır' : 'Yıldızla'}
+            aria-label={note.is_starred ? 'Yıldızı kaldır' : 'Yıldızla'}
+            aria-pressed={note.is_starred}
           >
             <svg className="h-4 w-4" fill={note.is_starred ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
@@ -140,7 +144,10 @@ export default function NoteCard({
           </button>
           <button
             onClick={() => setShowActions(!showActions)}
-            className="rounded-full p-1.5 text-terminal-muted transition-colors hover:text-white hover:bg-terminal-surface-hover"
+            title="Düzenle, etiketle, sil"
+            aria-label="Düzenle, etiketle, sil"
+            aria-expanded={showActions}
+            className="rounded-full p-2 text-terminal-muted transition-colors hover:text-white hover:bg-terminal-surface-hover"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
@@ -149,20 +156,40 @@ export default function NoteCard({
         </div>
       </div>
 
-      {/* Status + Tags */}
+      {/* Status badge + tags */}
+      {(!hideType || note.tags.length > 0) && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {!hideType && (
+            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeColors[note.type]}`}>
+              {typeLabels[note.type]}
+            </span>
+          )}
+          {note.tags.map((tag) => (
+            <TagPill
+              key={tag}
+              tag={tag}
+              removable={!!onRemoveTag}
+              onRemove={() => onRemoveTag?.(tag)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* One-click move + date */}
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${typeColors[note.type]}`}>
-          {typeLabels[note.type]}
-        </span>
-        {note.tags.map((tag) => (
-          <TagPill
-            key={tag}
-            tag={tag}
-            removable={!!onRemoveTag}
-            onRemove={() => onRemoveTag?.(tag)}
-          />
-        ))}
-        <span className="ml-auto text-[10px] text-terminal-muted">
+        {onUpdateType &&
+          NOTE_TYPES.filter((t) => t !== note.type).map((t) => (
+            <button
+              key={t}
+              onClick={() => onUpdateType(t)}
+              title={`${typeLabels[t]} olarak işaretle`}
+              className="inline-flex items-center gap-1.5 rounded-full bg-terminal-surface-hover px-3 py-2 text-xs font-medium text-white/90 transition-colors hover:bg-[#35475a] hover:text-white"
+            >
+              <span className={`h-2 w-2 rounded-full ${typeDots[t]}`} />
+              {typeLabels[t]}
+            </button>
+          ))}
+        <span className="ml-auto text-[11px] text-terminal-muted">
           {new Date(note.created_at).toLocaleDateString('tr-TR', {
             day: 'numeric',
             month: 'short',
@@ -175,61 +202,38 @@ export default function NoteCard({
       {/* Actions panel */}
       {showActions && (
         <div className="mt-3 space-y-3 border-t border-terminal-border pt-3">
-          {onUpdateContent && (
-            <button
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-terminal-green hover:underline"
-            >
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-              </svg>
-              İçeriği düzenle
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {onUpdateContent && (
+              <button
+                onClick={startEdit}
+                className="rounded-full bg-terminal-surface-hover px-3 py-2 text-xs font-medium text-white/90 transition-colors hover:bg-[#35475a] hover:text-white"
+              >
+                Düzenle
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="rounded-full px-3 py-2 text-xs font-medium text-terminal-red transition-colors hover:bg-terminal-red/10"
+              >
+                Sil
+              </button>
+            )}
+          </div>
 
-          {showTypeChanger && (
+          {onAddTag && (
             <div>
-              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-terminal-muted">Durum</label>
-              <div className="flex flex-wrap gap-1.5">
-                {(['inbox', 'in_progress', 'waiting', 'done'] as NoteType[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => onUpdateType?.(t)}
-                    disabled={note.type === t}
-                    className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
-                      note.type === t
-                        ? 'bg-terminal-green text-white'
-                        : 'bg-terminal-surface-hover text-terminal-muted hover:text-white'
-                    }`}
-                  >
-                    {typeLabels[t]}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-terminal-muted">Etiket ekle</label>
-            <div className="flex items-center gap-2">
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-terminal-muted">Etiket ekle</label>
               <input
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
                 placeholder="Yaz ve Enter'a bas..."
-                className="flex-1 rounded-full border border-terminal-border bg-[#17212b] px-4 py-2 text-xs text-white placeholder:text-terminal-muted hover:border-terminal-muted/60"
+                className="w-full rounded-full border border-terminal-border bg-[#17212b] px-4 py-2 text-xs text-white placeholder:text-terminal-muted hover:border-terminal-muted/60"
               />
-              {onDelete && (
-                <button
-                  onClick={onDelete}
-                  className="rounded-full px-3 py-1.5 text-xs text-terminal-red hover:bg-terminal-red/10 transition-colors"
-                >
-                  Sil
-                </button>
-              )}
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

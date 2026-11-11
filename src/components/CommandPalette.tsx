@@ -11,7 +11,7 @@ interface Command {
   category: string
 }
 
-export default function CommandPalette({ onCreateNote }: { onCreateNote: (content: string) => Promise<void> }) {
+export default function CommandPalette({ onCreateNote }: { onCreateNote: (content: string) => Promise<boolean> }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -30,15 +30,18 @@ export default function CommandPalette({ onCreateNote }: { onCreateNote: (conten
 
   const isNoteMode = query.trim() && filtered.length === 0
 
-  const execute = useCallback((cmd?: Command) => {
+  const execute = useCallback(async (cmd?: Command) => {
     if (cmd) {
       cmd.action()
       setOpen(false)
       setQuery('')
     } else if (isNoteMode && query.trim()) {
-      onCreateNote(query.trim())
-      setOpen(false)
-      setQuery('')
+      // Keep the palette open with the text if saving fails
+      const saved = await onCreateNote(query.trim())
+      if (saved) {
+        setOpen(false)
+        setQuery('')
+      }
     }
   }, [isNoteMode, query, onCreateNote])
 
@@ -90,11 +93,6 @@ export default function CommandPalette({ onCreateNote }: { onCreateNote: (conten
     return () => window.removeEventListener('keydown', handler)
   }, [open, filtered, selectedIndex, isNoteMode, execute])
 
-  // Reset selection when query changes
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [query])
-
   if (!open) return null
 
   return (
@@ -116,7 +114,10 @@ export default function CommandPalette({ onCreateNote }: { onCreateNote: (conten
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setSelectedIndex(0)
+            }}
             placeholder="Komut ara veya yeni not yaz..."
             className="flex-1 bg-transparent text-sm text-white placeholder:text-terminal-muted border-none"
           />

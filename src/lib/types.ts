@@ -1,4 +1,13 @@
 export type NoteType = 'inbox' | 'in_progress' | 'waiting' | 'done'
+export const NOTE_TYPES: NoteType[] = ['inbox', 'in_progress', 'waiting', 'done']
+
+export const typeLabels: Record<NoteType, string> = {
+  inbox: 'Inbox',
+  in_progress: 'Yapılıyor',
+  waiting: 'Beklemede',
+  done: 'Bitti',
+}
+
 export type NoteSource = 'web' | 'telegram' | 'voice'
 
 export interface Note {

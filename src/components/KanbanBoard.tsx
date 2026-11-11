@@ -13,12 +13,9 @@ import {
   type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
-  type DragOverEvent,
+  useDraggable,
+  useDroppable,
 } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { useDroppable } from '@dnd-kit/core'
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import type { Note, NoteType } from '@/lib/types'
 
 const columns: { id: NoteType; label: string; dot: string }[] = [
@@ -28,7 +25,9 @@ const columns: { id: NoteType; label: string; dot: string }[] = [
   { id: 'done', label: 'Bitti', dot: 'bg-[#4FAE4F]' },
 ]
 
-function SortableCard({
+// Cards move between columns only. Order inside a column is not stored,
+// so the card is draggable but the list is not sortable.
+function BoardCard({
   note,
   onDelete,
   onUpdate,
@@ -41,19 +40,10 @@ function SortableCard({
   const [value, setValue] = useState(note.content)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: note.id, disabled: editing })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: note.id,
+    disabled: editing,
+  })
 
   useEffect(() => {
     if (editing && textareaRef.current) {
@@ -61,6 +51,11 @@ function SortableCard({
       textareaRef.current.select()
     }
   }, [editing])
+
+  const startEdit = () => {
+    setValue(note.content)
+    setEditing(true)
+  }
 
   const save = () => {
     const trimmed = value.trim()
@@ -83,11 +78,10 @@ function SortableCard({
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className={`rounded-xl border bg-terminal-surface p-3 transition-all ${
-        isDragging ? 'opacity-50 border-terminal-green/40' :
+      className={`rounded-xl border bg-terminal-surface p-3 transition-colors ${
+        isDragging ? 'opacity-40 border-terminal-green/40' :
         editing ? 'border-terminal-green/50' :
-        'border-terminal-border hover:border-terminal-green/30 hover:bg-terminal-surface-hover'
+        'cursor-grab border-terminal-border hover:border-terminal-green/30'
       }`}
       {...(editing ? {} : attributes)}
       {...(editing ? {} : listeners)}
@@ -112,10 +106,10 @@ function SortableCard({
         />
       ) : (
         <p
-          className="text-sm leading-relaxed text-white cursor-text"
+          className="break-words text-sm leading-relaxed text-white"
           onDoubleClick={(e) => {
             e.stopPropagation()
-            setEditing(true)
+            startEdit()
           }}
         >
           {note.content}
@@ -123,7 +117,7 @@ function SortableCard({
       )}
 
       {note.due_date && !editing && (
-        <div className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+        <div className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
           isOverdue ? 'bg-terminal-red/15 text-terminal-red' :
           isToday ? 'bg-terminal-amber/15 text-terminal-amber' :
           'bg-terminal-surface-hover text-terminal-muted'
@@ -137,18 +131,18 @@ function SortableCard({
         </div>
       )}
 
-      <div className="mt-2 flex items-center justify-between">
-        <span className="text-[10px] text-terminal-muted">
+      <div className="mt-1 flex items-center justify-between">
+        <span className="text-[11px] text-terminal-muted">
           {new Date(note.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="-mr-2 flex items-center">
           {!editing && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                setEditing(true)
+                startEdit()
               }}
-              className="text-[10px] text-terminal-muted hover:text-terminal-green transition-colors"
+              className="rounded-full px-2 py-1.5 text-xs text-terminal-muted transition-colors hover:bg-terminal-surface-hover hover:text-white"
             >
               Düzenle
             </button>
@@ -159,7 +153,7 @@ function SortableCard({
                 e.stopPropagation()
                 save()
               }}
-              className="text-[10px] text-terminal-green font-semibold hover:underline"
+              className="rounded-full px-2 py-1.5 text-xs font-semibold text-terminal-green hover:bg-terminal-surface-hover"
             >
               Kaydet
             </button>
@@ -169,7 +163,7 @@ function SortableCard({
                 e.stopPropagation()
                 onDelete()
               }}
-              className="text-[10px] text-terminal-muted hover:text-terminal-red transition-colors"
+              className="rounded-full px-2 py-1.5 text-xs text-terminal-muted transition-colors hover:bg-terminal-red/10 hover:text-terminal-red"
             >
               Sil
             </button>
@@ -204,7 +198,7 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-h-[280px] flex-col rounded-2xl p-4 transition-colors ${
+      className={`flex min-h-[280px] w-[80vw] max-w-xs shrink-0 snap-start flex-col rounded-2xl p-3 transition-colors lg:w-auto lg:max-w-none ${
         isOver
           ? 'bg-terminal-green/10'
           : 'bg-[#1c2734]'
@@ -217,15 +211,14 @@ function Column({
             {column.label}
           </h2>
         </div>
-        <span className="rounded-full bg-terminal-surface px-2 py-0.5 text-[10px] font-medium text-terminal-muted">
+        <span className="rounded-full bg-terminal-surface px-2 py-0.5 text-[11px] font-medium text-terminal-muted">
           {notes.length}
         </span>
       </div>
 
-      <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-1 flex-col gap-2">
+      <div className="flex flex-1 flex-col gap-2">
           {notes.map((note) => (
-            <SortableCard
+            <BoardCard
               key={note.id}
               note={note}
               onDelete={() => onDelete(note.id)}
@@ -237,8 +230,7 @@ function Column({
               <span className="text-xs text-terminal-muted">Boş</span>
             </div>
           )}
-        </div>
-      </SortableContext>
+      </div>
     </div>
   )
 }
@@ -269,8 +261,6 @@ export default function KanbanBoard({
     if (note) setActiveNote(note)
   }
 
-  const handleDragOver = (_event: DragOverEvent) => {}
-
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveNote(null)
     const { active, over } = event
@@ -280,17 +270,10 @@ export default function KanbanBoard({
     const note = notes.find((n) => n.id === noteId)
     if (!note) return
 
-    const overId = over.id as string
-
-    const targetColumn = columns.find((c) => c.id === overId)
+    // Columns are the only drop targets
+    const targetColumn = columns.find((c) => c.id === over.id)
     if (targetColumn && targetColumn.id !== note.type) {
       onUpdateType(noteId, targetColumn.id)
-      return
-    }
-
-    const targetNote = notes.find((n) => n.id === overId)
-    if (targetNote && targetNote.type !== note.type) {
-      onUpdateType(noteId, targetNote.type)
     }
   }
 
@@ -305,10 +288,10 @@ export default function KanbanBoard({
       sensors={sensors}
       collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Phone: swipe sideways through columns. Desktop: four side by side. */}
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scroll-px-4 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0">
         {columns.map((col) => (
           <Column
             key={col.id}

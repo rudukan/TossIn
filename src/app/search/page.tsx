@@ -6,10 +6,9 @@ import NoteCard from '@/components/NoteCard'
 import TagPill from '@/components/TagPill'
 
 export default function SearchPage() {
-  const { notes, loading, searchNotes, updateNote, deleteNote, refetch } = useNotes()
+  const { notes, loading, updateNote, deleteNote } = useNotes()
   const [query, setQuery] = useState('')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
-  const [searched, setSearched] = useState(false)
 
   const allTags = useMemo(() => {
     const tags = new Set<string>()
@@ -17,26 +16,20 @@ export default function SearchPage() {
     return Array.from(tags).sort()
   }, [notes])
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (query.trim()) {
-      await searchNotes(query.trim())
-      setSearched(true)
-    } else {
-      await refetch()
-      setSearched(false)
-    }
-  }
-
-  const filtered = selectedTag
-    ? notes.filter((n) => n.tags.includes(selectedTag))
-    : notes
+  // All notes are already in memory, so filter as the user types
+  const needle = query.trim().toLocaleLowerCase('tr')
+  const filtered = notes.filter(
+    (n) =>
+      (!selectedTag || n.tags.includes(selectedTag)) &&
+      (!needle || n.content.toLocaleLowerCase('tr').includes(needle))
+  )
+  const filtering = !!needle || !!selectedTag
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-white">Ara</h1>
 
-      <form onSubmit={handleSearch}>
+      <form onSubmit={(e) => e.preventDefault()}>
         <div className="flex items-center rounded-full bg-terminal-surface px-4">
           <svg className="h-4 w-4 text-terminal-muted" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -70,16 +63,17 @@ export default function SearchPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-20 text-center text-sm text-terminal-muted">
-          {searched ? 'Sonuç bulunamadı.' : 'Aramak için bir şey yaz.'}
+          {filtering ? 'Sonuç bulunamadı.' : 'Henüz not yok.'}
         </div>
       ) : (
         <div className="space-y-2">
-          <span className="text-xs text-terminal-muted">{filtered.length} sonuç</span>
+          <span className="text-xs text-terminal-muted">
+            {filtered.length} {filtering ? 'sonuç' : 'not'}
+          </span>
           {filtered.map((note) => (
             <NoteCard
               key={note.id}
               note={note}
-              showTypeChanger
               onUpdateType={(type) => updateNote(note.id, { type })}
               onUpdateContent={(content) => updateNote(note.id, { content })}
               onToggleStar={() => updateNote(note.id, { is_starred: !note.is_starred })}

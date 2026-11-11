@@ -1,20 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
+
+// Only the e-mail is remembered. The password is never stored by the app;
+// the browser's password manager fills it.
+const EMAIL_KEY = 'tossin-email'
 
 export default function LoginPage() {
   const router = useRouter()
   const { signInWithPassword } = useAuth()
-  const [email, setEmail] = useState('')
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Bring back the remembered e-mail and jump straight to the password
+  useEffect(() => {
+    const saved = window.localStorage.getItem(EMAIL_KEY)
+    if (saved && emailRef.current && !emailRef.current.value) {
+      emailRef.current.value = saved
+      passwordRef.current?.focus()
+    }
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const email = emailRef.current?.value.trim() ?? ''
     setError('')
     setLoading(true)
     const { error } = await signInWithPassword(email, password)
@@ -22,6 +37,11 @@ export default function LoginPage() {
     if (error) {
       setError(error.message)
     } else {
+      if (remember) {
+        window.localStorage.setItem(EMAIL_KEY, email)
+      } else {
+        window.localStorage.removeItem(EMAIL_KEY)
+      }
       router.replace('/')
     }
   }
@@ -41,8 +61,7 @@ export default function LoginPage() {
           <input
             type="email"
             name="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            ref={emailRef}
             placeholder="ornek@mail.com"
             required
             autoFocus
@@ -52,6 +71,7 @@ export default function LoginPage() {
           <input
             type="password"
             name="password"
+            ref={passwordRef}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Şifre"
