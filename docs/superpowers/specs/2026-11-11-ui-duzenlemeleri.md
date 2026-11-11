@@ -42,6 +42,9 @@
 - Kullanıcı notu, 11 Kasım 2026: Arayüz "vay be" dedirtmese de rahat ve çok verimli kullanılabilmeli; ölçü bu.
 - Zamanlama (schedule) görünümü: notlara zaman verip takvim gibi görmek.
 - İlerde: zamanı gelen işi uygulamanın kendisinin çalıştırabileceği bir zemin.
+  - 11 Kasım 2026 akşam, kullanıcı: "execute olsa çok iyi olur"; basit eylemlerden başlanacak, örnek eylem "araştır". Kullanıcı iki bilgisayar kullanıyor; gerekirse iş için yeni klasör açılabilir.
+  - Öneri (karar değil): ilk eylem "araştır" — zamanı gelince bulutta çalışır, sonucu Telegram'a yazar; bilgisayar gerekmez. Bilgisayarda çalışan eylemler sonraki aşama (onay adımı + tek klasör izni şart).
+  - Öneri: sabah özeti (09:00, Telegram) — aynı zamanlayıcıyı kullanır.
 
 ## Günlük
 
@@ -63,6 +66,14 @@
 - Giriş ekranı: "Beni hatırla" kutusu hiçbir şey yapmıyordu. Artık işaretliyse başarılı girişte e-posta bu tarayıcıda saklanıyor ve sonraki açılışta dolu geliyor; imleç şifreye geçiyor. Şifre uygulamada saklanmıyor (karar: güvenlik; şifreyi tarayıcının şifre yöneticisi doldurur).
 - Doğrulandı: tip ve lint temiz. Test edilmedi: tarayıcıda giriş ekranı.
 - Sıradaki adım: kullanıcı çıkış yapıp tekrar girerek e-postanın geldiğini, sonra Inbox ve Board'u dener.
+
+### 11 Kasım 2026 — akşam (devirden sonra)
+
+- Adım 1–3 commit edildi, master'a birleştirildi, Vercel'de yayında (`toss-in-v3xp.vercel.app`, commit `0068018`). Doğrulandı: canlı kodda yeni sürüm var; e-posta hatırlama kullanıcıda çalıştı.
+- Vercel'deki kopya proje `toss-in` (`toss-in-pi.vercel.app`) kullanıcı onayıyla silindi.
+- Telegram botu `claude-haiku-5-5`'e geçti (yerel commit `85348c6`, push yok). İlk denemede "reading 'trim'" hatası: yanıtın ilk bloğu metin değildi. Düzeltme: metin bloğu aranıyor, `max_tokens` 256 → 1024. Yayınlandı, commit edilmedi.
+- Açık: web giriş kutusu tarih ayıklamıyor (Claude çağrısı yok) — arka planda API çağrısı mı, tarih düğmesi mi; kullanıcı karar verecek.
+- Açık: adım 4 (375px ve masaüstü kontrolü) yapılmadı.
 
 ### Devir — 11 Kasım 2026, 16:08
 - Durum: Yol haritasının 1–3. adımlarının kodu yazıldı, hepsi kaydedilmemiş (commit yok) ve bu worktree'de duruyor. Tip, lint (0 hata) ve build temiz. Tarayıcıda yalnız "sayfa açılıyor" doğrulandı; davranışların hiçbiri denenmedi.

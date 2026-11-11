@@ -109,7 +109,7 @@ async function classifyMessage(
     },
     body: JSON.stringify({
       model: "claude-haiku-5-5",
-      max_tokens: 256,
+      max_tokens: 1024,
       messages: [
         {
           role: "user",
@@ -155,7 +155,15 @@ veya
 
   const data = await res.json();
   if (data.error) throw new Error(`Claude API: ${data.error.message}`);
-  let text = data.content[0].text.trim();
+  // İlk blok her zaman metin olmayabilir (ör. düşünme bloğu) — metin bloğunu bul
+  const textBlock = (data.content ?? []).find(
+    (b: { type: string; text?: string }) => b.type === "text" && b.text
+  );
+  if (!textBlock) {
+    const types = (data.content ?? []).map((b: { type: string }) => b.type).join(",");
+    throw new Error(`Claude metin döndürmedi (bloklar: ${types || "yok"}, stop: ${data.stop_reason})`);
+  }
+  let text = textBlock.text.trim();
   // Claude bazen ```json ... ``` ile sarar veya ek açıklama ekler — temizle
   text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/,  "");
   // JSON bloğunu bul — ilk { ile son } arası
