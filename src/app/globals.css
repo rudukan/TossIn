@@ -85,6 +85,13 @@ input:focus, textarea:focus {
   box-shadow: 0 0 0 2px rgba(42, 171, 238, 0.5);
 }
 
+/* Telefonda 16px altı yazı kutusuna dokununca iOS sayfayı büyütür */
+@media (max-width: 639px) {
+  input, textarea {
+    font-size: 16px;
+  }
+}
+
 /* Selection — Telegram blue */
 ::selection {
   background: rgba(42, 171, 238, 0.35);

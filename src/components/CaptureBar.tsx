@@ -30,13 +30,13 @@ export default function CaptureBar({ onCapture, maxWidth = 'max-w-3xl' }: { onCa
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Aklına ne geldi?"
-          className="flex-1 rounded-full bg-terminal-surface px-5 py-2.5 text-sm text-white placeholder:text-terminal-muted border-none"
+          className="min-w-0 flex-1 rounded-full bg-terminal-surface px-4 py-2.5 text-sm sm:px-5 text-white placeholder:text-terminal-muted border-none"
           disabled={saving}
         />
         <button
           type="submit"
           disabled={!value.trim() || saving}
-          className="rounded-full bg-terminal-green px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-terminal-green-dim disabled:opacity-30 disabled:hover:bg-terminal-green"
+          className="shrink-0 rounded-full bg-terminal-green px-4 py-2.5 sm:px-5 text-sm font-semibold text-white transition-all hover:bg-terminal-green-dim disabled:opacity-30 disabled:hover:bg-terminal-green"
         >
           {saving ? '...' : 'Gönder'}
         </button>
@@ -44,7 +44,7 @@ export default function CaptureBar({ onCapture, maxWidth = 'max-w-3xl' }: { onCa
           type="button"
           onClick={() => signOut()}
           title="Çıkış"
-          className="rounded-full p-2.5 text-terminal-muted transition-colors hover:bg-terminal-surface hover:text-white"
+          className="shrink-0 rounded-full p-2.5 text-terminal-muted transition-colors hover:bg-terminal-surface hover:text-white"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
