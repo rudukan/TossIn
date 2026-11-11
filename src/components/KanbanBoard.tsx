@@ -31,10 +31,12 @@ function BoardCard({
   note,
   onDelete,
   onUpdate,
+  onMove,
 }: {
   note: Note
   onDelete: () => void
   onUpdate: (content: string) => void
+  onMove: (type: NoteType) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(note.content)
@@ -131,6 +133,27 @@ function BoardCard({
         </div>
       )}
 
+      {/* Phone: one tap moves the card. Desktop uses drag and drop. */}
+      {!editing && (
+        <div className="mt-2 flex flex-wrap gap-1.5 lg:hidden">
+          {columns
+            .filter((c) => c.id !== note.type)
+            .map((c) => (
+              <button
+                key={c.id}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onMove(c.id)
+                }}
+                className="flex items-center gap-1.5 rounded-full bg-[#17212b] px-3 py-1.5 text-xs font-medium text-white active:bg-terminal-surface-hover"
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+                {c.label}
+              </button>
+            ))}
+        </div>
+      )}
+
       <div className="mt-1 flex items-center justify-between">
         <span className="text-[11px] text-terminal-muted">
           {new Date(note.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
@@ -187,24 +210,26 @@ function Column({
   notes,
   onDelete,
   onUpdate,
+  onMove,
 }: {
   column: (typeof columns)[number]
   notes: Note[]
   onDelete: (id: string) => void
   onUpdate: (id: string, content: string) => void
+  onMove: (id: string, type: NoteType) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-h-[280px] w-[80vw] max-w-xs shrink-0 snap-start flex-col rounded-2xl p-3 transition-colors lg:w-auto lg:max-w-none ${
+      className={`flex flex-col rounded-2xl p-3 transition-colors lg:min-h-[280px] ${
         isOver
           ? 'bg-terminal-green/10'
           : 'bg-[#1c2734]'
       }`}
     >
-      <div className="mb-3 flex items-center justify-between px-1">
+      <div className={`flex items-center justify-between px-1 lg:mb-3 ${notes.length > 0 ? 'mb-3' : ''}`}>
         <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${column.dot}`} />
           <h2 className="text-xs font-semibold text-white">
@@ -223,10 +248,11 @@ function Column({
               note={note}
               onDelete={() => onDelete(note.id)}
               onUpdate={(content) => onUpdate(note.id, content)}
+              onMove={(type) => onMove(note.id, type)}
             />
           ))}
           {notes.length === 0 && (
-            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-terminal-border py-8">
+            <div className="hidden flex-1 items-center justify-center rounded-xl border border-dashed border-terminal-border py-8 lg:flex">
               <span className="text-xs text-terminal-muted">Boş</span>
             </div>
           )}
@@ -290,8 +316,8 @@ export default function KanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      {/* Phone: swipe sideways through columns. Desktop: four side by side. */}
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scroll-px-4 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0">
+      {/* Phone: statuses stacked, empty ones collapse to one line. Desktop: four side by side. */}
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-4">
         {columns.map((col) => (
           <Column
             key={col.id}
@@ -299,6 +325,7 @@ export default function KanbanBoard({
             notes={notesByType(col.id)}
             onDelete={onDelete}
             onUpdate={onUpdateContent}
+            onMove={onUpdateType}
           />
         ))}
       </div>
