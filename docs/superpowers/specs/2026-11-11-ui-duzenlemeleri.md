@@ -73,7 +73,7 @@
 - Vercel'deki kopya proje `toss-in` (`toss-in-pi.vercel.app`) kullanıcı onayıyla silindi.
 - Telegram botu `claude-haiku-5-5`'e geçti (yerel commit `85348c6`, push yok). İlk denemede "reading 'trim'" hatası: yanıtın ilk bloğu metin değildi. Düzeltme: metin bloğu aranıyor, `max_tokens` 256 → 1024. Yayınlandı, commit edilmedi.
 - Açık: web giriş kutusu tarih ayıklamıyor (Claude çağrısı yok) — arka planda API çağrısı mı, tarih düğmesi mi; kullanıcı karar verecek.
-- Açık: adım 4 (375px ve masaüstü kontrolü) yapılmadı.
+- Adım 4 yapıldı (canlıda, 375 ve 320px): üst çubuk 383px altında taşıyordu (yazı kutusunda `min-w-0` yoktu) — düzeltildi. Telefonda yazı kutuları 16px (iOS dokununca büyütmesin). Doğrulandı: Inbox, Board, Ara 375px'te yatay taşma yok; kartta tarih alt satıra iniyor. Test edilmedi: gerçek telefon, giriş ekranı dışındaki dokunma davranışları.
 
 ### Devir — 11 Kasım 2026, 16:08
 - Durum: Yol haritasının 1–3. adımlarının kodu yazıldı, hepsi kaydedilmemiş (commit yok) ve bu worktree'de duruyor. Tip, lint (0 hata) ve build temiz. Tarayıcıda yalnız "sayfa açılıyor" doğrulandı; davranışların hiçbiri denenmedi.
